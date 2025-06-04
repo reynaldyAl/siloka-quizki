@@ -1,8 +1,5 @@
-# siloka-quizki
-Web development full stack for PWL - B Final 4th Semester (Collab)
-
-# QUIZKI - Full Stack Web Application JSX
-
+# SILOKA QUIZKI
+Web development full stack untuk PWL - B Final 4th Semester (Collab)
 
 [![GitHub contributors](https://img.shields.io/github/contributors/reynaldyAl/siloka-quizki)](https://github.com/reynaldyAl/siloka-quizki/graphs/contributors)
 [![GitHub issues](https://img.shields.io/github/issues/reynaldyAl/siloka-quizki)](https://github.com/reynaldyAl/siloka-quizki/issues)
@@ -10,236 +7,256 @@ Web development full stack for PWL - B Final 4th Semester (Collab)
 [![GitHub forks](https://img.shields.io/github/forks/reynaldyAl/siloka-quizki)](https://github.com/reynaldyAl/siloka-quizki/network)
 [![GitHub license](https://img.shields.io/github/license/reynaldyAl/siloka-quizki)](https://github.com/reynaldyAl/siloka-quizki/blob/main/LICENSE)
 
-## 📝 Project Overview
+## 📝 Gambaran Proyek
 
-QUIZKI is a full-stack web application built with JSX that integrates with various databases to deliver an interactive quiz platform. The application will utilize APIs to fetch and manage quiz content.
+SILOKA QUIZKI adalah aplikasi web full-stack yang dibangun dengan JSX yang terintegrasi dengan berbagai database untuk memberikan platform kuis interaktif. Aplikasi ini akan menggunakan API untuk mengambil dan mengelola konten kuis.
 
 ## 🔧 Tech Stack
 
-- Frontend: React.js with JSX
+- Frontend: React.js dengan JSX
 - Backend: Node.js/Express
-- Databases: (TBD - MongoDB, PostgreSQL, etc.)
-- API Integration
-- Other tech: (Add as needed)
+- Database: (MongoDB, PostgreSQL, dll. - akan ditentukan)
+- Integrasi API
+- Teknologi lain: (Akan ditambahkan sesuai kebutuhan)
 
-## 👥 Git Collaboration Guide
+## 👥 Panduan Kolaborasi Git
 
-This guide outlines our team's GitHub workflow to ensure smooth collaboration and version control.
+### Langkah Awal Kolaborasi
 
-> **IMPORTANT NOTE**: Jika ingin collab, silahkan buat branch sendiri dan push ke branch serta pastikan agar git fetch untuk memastikan kesamaan
+#### Metode 1: Sebagai Kontributor Langsung (Direkomendasikan untuk Tim Inti)
 
-### Initial Setup
-
-1. **Clone the repository**
+1. **Clone repositori**
    ```bash
-   git clone https://github.com/reynaldyAl/quizki.git
-   cd quizki
+   git clone https://github.com/reynaldyAl/siloka-quizki.git
+   cd siloka-quizki
    ```
 
-2. **Install dependencies**
+2. **Pasang dependencies**
    ```bash
    npm install
    ```
 
-3. **Sync with remote repository**
+3. **Buat branch baru**
    ```bash
-   git fetch --all
-   ```
-
-### Branch Structure
-
-We follow a structured branching strategy:
-
-- `main` - Production-ready code
-- `develop` - Integration branch for features
-- `feature/[feature-name]` - Individual feature development
-- `bugfix/[bug-name]` - Bug fixes
-- `hotfix/[hotfix-name]` - Urgent fixes for production
-
-### Creating a Branch
-
-Always create new branches from `develop` for features or `main` for hotfixes:
-
-```bash
-# First, make sure you're up to date
-git checkout develop
-git pull origin develop
-
-# Create and switch to a new feature branch
-git checkout -b feature/user-authentication
-
-# For bug fixes
-git checkout -b bugfix/login-validation
-
-# For hotfixes (from main)
-git checkout main
-git pull origin main
-git checkout -b hotfix/critical-security-issue
-```
-
-### Branch Naming Convention
-
-Follow these conventions for branch names:
-
-- `feature/[feature-name]` - For new features (e.g., `feature/quiz-search`)
-- `bugfix/[bug-name]` - For bug fixes (e.g., `bugfix/score-calculation`)
-- `hotfix/[hotfix-name]` - For critical fixes (e.g., `hotfix/auth-vulnerability`)
-- `docs/[doc-name]` - For documentation updates (e.g., `docs/api-endpoints`)
-- `refactor/[area]` - For code refactoring (e.g., `refactor/database-queries`)
-
-Use kebab-case (lowercase with hyphens) for the descriptive part.
-
-### Daily Workflow
-
-1. **Update your branch with the latest changes from develop**
-   ```bash
+   # Pastikan kamu berada di branch develop terbaru
    git checkout develop
    git pull origin develop
-   git checkout your-branch-name
+   
+   # Buat branch fitur baru
+   git checkout -b feature/nama-fitur
+   ```
+
+#### Metode 2: Menggunakan Fork (Direkomendasikan untuk Kontributor Eksternal)
+
+1. **Fork repositori**
+   - Kunjungi https://github.com/reynaldyAl/siloka-quizki
+   - Klik tombol "Fork" di pojok kanan atas
+   - Pilih akun GitHub kamu sebagai tujuan fork
+
+2. **Clone hasil fork**
+   ```bash
+   git clone https://github.com/username-kamu/siloka-quizki.git
+   cd siloka-quizki
+   ```
+
+3. **Tambahkan upstream remote**
+   ```bash
+   git remote add upstream https://github.com/reynaldyAl/siloka-quizki.git
+   ```
+
+4. **Buat branch baru**
+   ```bash
+   # Update dari upstream terlebih dahulu
+   git fetch upstream
+   git checkout develop
+   git merge upstream/develop
+   
+   # Buat branch fitur baru
+   git checkout -b feature/nama-fitur
+   ```
+
+### Struktur Branch
+
+Kami mengikuti strategi branching terstruktur:
+
+- `main` - Kode siap produksi
+- `develop` - Branch integrasi untuk fitur-fitur
+- `feature/[nama-fitur]` - Pengembangan fitur individu
+- `bugfix/[nama-bug]` - Perbaikan bug
+- `hotfix/[nama-hotfix]` - Perbaikan darurat untuk produksi
+
+### Konvensi Penamaan Branch
+
+- `feature/[nama-fitur]` - Untuk fitur baru (misal: `feature/pencarian-kuis`)
+- `bugfix/[nama-bug]` - Untuk perbaikan bug (misal: `bugfix/kalkulasi-skor`)
+- `hotfix/[nama-hotfix]` - Untuk perbaikan kritis (misal: `hotfix/kerentanan-auth`)
+- `docs/[nama-docs]` - Untuk pembaruan dokumentasi (misal: `docs/endpoint-api`)
+- `refactor/[area]` - Untuk refaktor kode (misal: `refactor/kueri-database`)
+
+Gunakan kebab-case (huruf kecil dengan tanda hubung) untuk bagian deskriptif.
+
+> **CATATAN PENTING**: Jika ingin collab, silahkan buat branch sendiri dan push ke branch serta pastikan agar git fetch untuk memastikan kesamaan
+
+### Alur Kerja Harian
+
+1. **Selalu update branch develop sebelum memulai pekerjaan baru**
+   ```bash
+   # Jika menggunakan metode 1 (kontributor langsung)
+   git checkout develop
+   git pull origin develop
+   
+   # Jika menggunakan metode 2 (fork)
+   git checkout develop
+   git fetch upstream
+   git merge upstream/develop
+   git push origin develop  # Update fork kamu
+   ```
+
+2. **Kembali ke branch fitur kamu dan update dengan perubahan terbaru dari develop**
+   ```bash
+   git checkout feature/nama-fitur
    git merge develop
    ```
 
-2. **Sync with remote repository before making changes**
+3. **Sinkronkan dengan repositori remote sebelum melakukan perubahan**
    ```bash
    git fetch --all
    ```
 
-3. **Make your changes locally**
-   - Write code
-   - Add tests if applicable
-   - Ensure code linting passes
+4. **Kerjakan perubahan kamu**
+   - Buat perubahan kode
+   - Uji perubahan lokal
 
-4. **Commit your changes**
+5. **Commit perubahan**
    ```bash
    git add .
-   git commit -m "feat: add user authentication system"
+   git commit -m "feat: menambahkan fitur login"
    ```
 
-   **Commit Message Format:**
-   - `feat:` - A new feature
-   - `fix:` - A bug fix
-   - `docs:` - Documentation changes
-   - `style:` - Code style changes (formatting, etc.)
-   - `refactor:` - Code refactoring
-   - `test:` - Adding or updating tests
-   - `chore:` - Maintenance tasks
+   **Format Pesan Commit:**
+   - `feat:` - Fitur baru
+   - `fix:` - Perbaikan bug
+   - `docs:` - Perubahan dokumentasi
+   - `style:` - Perubahan format kode (tidak mengubah logika)
+   - `refactor:` - Refaktor kode
+   - `test:` - Menambah/mengubah test
+   - `chore:` - Pemeliharaan repositori
 
-5. **Push your branch**
+6. **Push ke branch**
    ```bash
-   git push origin your-branch-name
+   git push origin nama-branch-kamu
    ```
 
-### Pull Requests
+### Pull Request
 
-1. **Open a Pull Request (PR) on GitHub**
-   - Go to the repository on GitHub
-   - Click "Pull Requests" > "New Pull Request"
-   - Select your branch as "compare"
-   - Select "develop" as the "base" (or "main" for hotfixes)
-   - Fill in the PR template
+1. **Buka Pull Request (PR) di GitHub**
+   - Buka repositori di GitHub
+   - Klik "Pull Requests" > "New Pull Request"
+   - Pilih branch kamu sebagai "compare"
+   - Pilih "develop" sebagai "base" (atau "main" untuk hotfix)
+   - Isi template PR
 
-2. **PR Requirements**
-   - Give your PR a clear title
-   - Describe what changes you've made
-   - Reference any related issues (#issue-number)
-   - Request reviews from relevant team members
-   - Make sure all CI checks pass
+2. **Persyaratan PR**
+   - Berikan judul PR yang jelas
+   - Jelaskan perubahan yang kamu buat
+   - Referensikan issue terkait (#nomor-issue)
+   - Minta review dari anggota tim yang relevan
+   - Pastikan semua pemeriksaan CI lolos
 
-3. **Code Review Process**
-   - Address reviewer comments
-   - Make necessary changes
-   - Push additional commits to the same branch
-   - PR will update automatically
+3. **Proses Review Kode**
+   - Tanggapi komentar reviewer
+   - Lakukan perubahan yang diperlukan
+   - Push commit tambahan ke branch yang sama
+   - PR akan diperbarui secara otomatis
 
-4. **Merging**
-   - PRs require at least one approval
-   - Resolve any merge conflicts
-   - PRs are typically merged using "Squash and merge" to keep history clean
+4. **Penggabungan**
+   - PR memerlukan setidaknya satu persetujuan
+   - Selesaikan konflik penggabungan yang ada
+   - PR biasanya digabungkan menggunakan "Squash and merge" untuk menjaga riwayat tetap bersih
 
-### Handling Merge Conflicts
+### Mengatasi Konflik Merge
 
-If you encounter merge conflicts:
+Jika kamu mengalami konflik merge:
 
 ```bash
-# Update your local develop branch
+# Update branch develop lokal
 git checkout develop
 git pull origin develop
 
-# Return to your branch
-git checkout your-branch-name
+# Kembali ke branch kamu
+git checkout nama-branch-kamu
 git merge develop
 
-# Resolve conflicts in your code editor
-# After resolving, mark files as resolved
+# Selesaikan konflik di editor kode
+# Setelah menyelesaikan, tandai file sebagai resolved
 git add .
 
-# Complete the merge
+# Selesaikan merge
 git commit
-git push origin your-branch-name
+git push origin nama-branch-kamu
 ```
 
-## 📁 Code Organization
+## 📁 Struktur Kode
 
-Our project follows this structure:
+Proyek kami mengikuti struktur berikut:
 
 ```
-quizki/
-├── client/               # Frontend code
-│   ├── public/           # Static assets
+siloka-quizki/
+├── client/               # Kode frontend
+│   ├── public/           # Aset statis
 │   ├── src/
-│   │   ├── assets/       # Images, fonts, etc.
-│   │   ├── components/   # Reusable components
-│   │   ├── contexts/     # React contexts
-│   │   ├── hooks/        # Custom hooks
-│   │   ├── pages/        # Page components
-│   │   ├── services/     # API services
-│   │   ├── utils/        # Helper functions
-│   │   └── App.jsx       # Main app component
-├── server/               # Backend code
-│   ├── config/           # Configuration files
-│   ├── controllers/      # Request handlers
-│   ├── middleware/       # Express middleware
-│   ├── models/           # Database models
-│   ├── routes/           # API routes
+│   │   ├── assets/       # Gambar, font, dll.
+│   │   ├── components/   # Komponen yang dapat digunakan kembali
+│   │   ├── contexts/     # Konteks React
+│   │   ├── hooks/        # Hook khusus
+│   │   ├── pages/        # Komponen halaman
+│   │   ├── services/     # Layanan API
+│   │   ├── utils/        # Fungsi pembantu
+│   │   └── App.jsx       # Komponen aplikasi utama
+├── server/               # Kode backend
+│   ├── config/           # File konfigurasi
+│   ├── controllers/      # Handler request
+│   ├── middleware/       # Middleware Express
+│   ├── models/           # Model database
+│   ├── routes/           # Rute API
 │   └── server.js         # Entry point
 ├── .gitignore
 ├── package.json
 └── README.md
 ```
 
-**Guidelines:**
-- Place components in appropriate directories
-- Use PascalCase for component files (e.g., `UserProfile.jsx`)
-- Use camelCase for non-component files (e.g., `authService.js`)
-- Create subdirectories for feature-specific code
+**Panduan:**
+- Tempatkan komponen di direktori yang sesuai
+- Gunakan PascalCase untuk file komponen (misalnya, `UserProfile.jsx`)
+- Gunakan camelCase untuk file non-komponen (misalnya, `authService.js`)
+- Buat subdirektori untuk kode fitur khusus
 
-## 🧪 Testing
+## 🧪 Pengujian
 
-- Write tests for new features
-- Ensure existing tests pass before submitting PRs
-- Run the test suite locally:
+- Tulis pengujian untuk fitur baru
+- Pastikan pengujian yang sudah ada lulus sebelum mengajukan PR
+- Jalankan suite pengujian secara lokal:
   ```bash
   npm test
   ```
 
 ## 🚀 Deployment
 
-(Add deployment information when available)
+(Informasi deployment akan ditambahkan nanti)
 
-## 📝 Additional Resources
+## 📝 Sumber Daya Tambahan
 
-- [React Documentation](https://reactjs.org/docs/getting-started.html)
+- [Dokumentasi React](https://reactjs.org/docs/getting-started.html)
 - [Git Cheat Sheet](https://education.github.com/git-cheat-sheet-education.pdf)
 - [Conventional Commits](https://www.conventionalcommits.org/)
 
-## 🤝 Team Members
+## 🤝 Anggota Tim
 
-- [reynaldyAl](https://github.com/reynaldyAl) 
+- [reynaldyAl](https://github.com/reynaldyAl) - Project Lead
 - [A. M. YUSRAN MAZIDAN](https://github.com/Yousran)
 - [REZKY ROBBYYANTO AKBARI](https://github.com/)
 - [A.MUH. MUFLIH HANIFATUSSURUR](https://github.com/)
 
+## 📜 Lisensi
 
-## 📜 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+Proyek ini dilisensikan di bawah Lisensi MIT - lihat file LICENSE untuk detailnya.
