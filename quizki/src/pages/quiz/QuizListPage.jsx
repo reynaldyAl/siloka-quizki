@@ -1,0 +1,1 @@
+// pages/quiz/QuizListPage.jsx - List of available quizzes

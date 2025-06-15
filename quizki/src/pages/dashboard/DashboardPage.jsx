@@ -1,0 +1,1 @@
+// pages/dashboard/DashboardPage.jsx - User dashboard

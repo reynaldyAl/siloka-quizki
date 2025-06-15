@@ -1,0 +1,1 @@
+// layouts/MainLayout.jsx - Main application layout with navbar
