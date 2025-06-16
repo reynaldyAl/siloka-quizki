@@ -1,0 +1,4 @@
+*
+node_modules/
+# Ignore all files in the .venv directory
+  
