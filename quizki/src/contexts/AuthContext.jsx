@@ -1,0 +1,1 @@
+// contexts/AuthContext.jsx - Authentication state management

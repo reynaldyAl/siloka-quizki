@@ -1,0 +1,1 @@
+// pages/auth/RegisterPage.jsx - Registration page

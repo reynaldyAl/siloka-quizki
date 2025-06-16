@@ -1,0 +1,1 @@
+// layouts/AuthLayout.jsx - Layout for login/register pages

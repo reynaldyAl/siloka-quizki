@@ -1,0 +1,1 @@
+// pages/auth/LoginPage.jsx - Login page

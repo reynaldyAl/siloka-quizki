@@ -1,0 +1,1 @@
+// pages/quiz/TakeQuizPage.jsx - Quiz taking interface
