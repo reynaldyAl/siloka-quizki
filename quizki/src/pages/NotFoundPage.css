@@ -1,0 +1,299 @@
+.not-found-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(to bottom, #0f172a, #1e293b);
+  overflow: hidden;
+  z-index: 0;
+}
+
+/* Stars background */
+.stars-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 990;
+}
+
+.stars-bg.small {
+  background-image: 
+    radial-gradient(1px 1px at 25px 25px, white 100%, transparent 100%),
+    radial-gradient(1px 1px at 50px 50px, white 100%, transparent 100%),
+    radial-gradient(1px 1px at 125px 75px, white 100%, transparent 100%),
+    radial-gradient(1px 1px at 75px 125px, white 100%, transparent 100%);
+  background-size: 150px 150px;
+  animation: stars-animation 200s linear infinite;
+}
+
+.stars-bg.medium {
+  background-image: 
+    radial-gradient(1.5px 1.5px at 75px 125px, rgba(255, 255, 255, 0.9) 100%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 100px 200px, rgba(255, 255, 255, 0.9) 100%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 300px 100px, rgba(255, 255, 255, 0.9) 100%, transparent 100%);
+  background-size: 350px 350px;
+  animation: stars-animation 150s linear infinite;
+}
+
+.stars-bg.large {
+  background-image: 
+    radial-gradient(2px 2px at 200px 200px, rgba(255, 255, 255, 1) 100%, transparent 100%),
+    radial-gradient(2px 2px at 400px 400px, rgba(255, 255, 255, 0.8) 100%, transparent 100%),
+    radial-gradient(2px 2px at 600px 300px, rgba(255, 255, 255, 0.8) 100%, transparent 100%);
+  background-size: 600px 600px;
+  animation: stars-animation 100s linear infinite;
+}
+
+@keyframes stars-animation {
+  from { background-position: 0 0; }
+  to { background-position: 10000px 0; }
+}
+
+/* Planets */
+.planet {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 991;
+}
+
+.planet1 {
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle at 30% 30%, #38bdf8, #0284c7);
+  top: 15%;
+  right: 15%;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+  animation: float 15s infinite ease-in-out;
+}
+
+.planet2 {
+  width: 40px;
+  height: 40px;
+  background: radial-gradient(circle at 40% 40%, #f97316, #c2410c);
+  bottom: 20%;
+  left: 10%;
+  box-shadow: 0 0 15px rgba(249, 115, 22, 0.5);
+  animation: float 12s infinite ease-in-out reverse;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+.not-found-content {
+  position: relative;
+  z-index: 10;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  padding-top: 80px; /* Account for navbar */
+}
+
+.not-found-card {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 3rem;
+  max-width: 600px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  animation: simple-fade 0.4s ease-out forwards;
+}
+
+@keyframes simple-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Lost astronaut animation */
+.lost-astronaut {
+  position: relative;
+  height: 140px;
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+.astronaut-body {
+  position: absolute;
+  width: 50px;
+  height: 80px;
+  right: 50%;
+  transform: translateX(50%);
+  background: #e2e8f0;
+  border-radius: 20px;
+  animation: astronaut-float 4s ease-in-out infinite;
+}
+
+@keyframes astronaut-float {
+  0%, 100% { transform: translateX(50%) rotate(-5deg); }
+  50% { transform: translateX(50%) translateY(-15px) rotate(5deg); }
+}
+
+.helmet {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  top: -20px;
+  left: 5px;
+  background: #e2e8f0;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.helmet-glass {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  top: 5px;
+  left: 5px;
+  background: linear-gradient(135deg, #38bdf8, #0284c7);
+  border-radius: 50%;
+}
+
+.astronaut-backpack {
+  position: absolute;
+  width: 30px;
+  height: 40px;
+  top: 10px;
+  left: -10px;
+  background: #94a3b8;
+  border-radius: 8px;
+  z-index: -1;
+}
+
+.astronaut-arm {
+  position: absolute;
+  width: 10px;
+  height: 30px;
+  background: #e2e8f0;
+  border-radius: 5px;
+}
+
+.astronaut-arm.left {
+  top: 20px;
+  left: -5px;
+  transform: rotate(-30deg);
+  animation: arm-wave-left 4s ease-in-out infinite;
+}
+
+.astronaut-arm.right {
+  top: 20px;
+  right: -5px;
+  transform: rotate(30deg);
+  animation: arm-wave-right 4s ease-in-out infinite;
+}
+
+@keyframes arm-wave-left {
+  0%, 100% { transform: rotate(-30deg); }
+  50% { transform: rotate(-40deg); }
+}
+
+@keyframes arm-wave-right {
+  0%, 100% { transform: rotate(30deg); }
+  50% { transform: rotate(40deg); }
+}
+
+.astronaut-leg {
+  position: absolute;
+  width: 12px;
+  height: 35px;
+  background: #e2e8f0;
+  border-radius: 6px;
+  bottom: -25px;
+}
+
+.astronaut-leg.left {
+  left: 10px;
+  transform: rotate(-10deg);
+}
+
+.astronaut-leg.right {
+  right: 10px;
+  transform: rotate(10deg);
+}
+
+.tether {
+  position: absolute;
+  width: 2px;
+  height: 60px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8), transparent);
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Text and content */
+.not-found-title {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1.5rem;
+}
+
+.error-code {
+  font-size: 4rem;
+  font-weight: 900;
+  line-height: 1;
+  color: #94a3b8;
+  margin-bottom: 0.5rem;
+}
+
+.gradient-text {
+  font-size: 2rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #38bdf8, #818cf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+.not-found-message {
+  color: #e2e8f0;
+  font-size: 1.125rem;
+  margin-bottom: 2.5rem;
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.not-found-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .not-found-card {
+    padding: 2rem 1.5rem;
+  }
+  
+  .error-code {
+    font-size: 3rem;
+  }
+  
+  .gradient-text {
+    font-size: 1.5rem;
+  }
+  
+  .not-found-message {
+    font-size: 1rem;
+  }
+  
+  .not-found-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

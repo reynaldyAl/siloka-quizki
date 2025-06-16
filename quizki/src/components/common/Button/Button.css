@@ -1,0 +1,43 @@
+/* Space theme for buttons */
+.space-theme-button {
+  position: relative;
+  background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+  color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+  border: none;
+  transform: translateY(0);
+}
+
+.space-theme-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+}
+
+.space-theme-button:active {
+  transform: translateY(1px);
+}
+
+.space-theme-button .button-stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(1px 1px at 10px 10px, white 100%, transparent 100%),
+    radial-gradient(1px 1px at 20px 20px, white 100%, transparent 100%),
+    radial-gradient(1px 1px at 30px 30px, white 100%, transparent 100%),
+    radial-gradient(1px 1px at 40px 40px, white 100%, transparent 100%);
+  background-size: 50px 50px;
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+.button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
