@@ -1,4 +1,3 @@
-// src/contexts/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import authService from '../services/authService';
 
@@ -18,7 +17,9 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Initialize auth state and set up event listener for storage changes
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -33,24 +34,42 @@ export const AuthProvider = ({ children }) => {
             // Try to get current user info with the token
             const userData = storedUser ? JSON.parse(storedUser) : null;
             setUser(userData || { username: 'User' }); // Set basic user if no stored data
+            setIsAuthenticated(true);
             console.log("Auth initialized with token and user data");
           } catch (err) {
             console.error('Failed to parse user data:', err);
             localStorage.removeItem('user');
+            setIsAuthenticated(false);
           }
         } else {
           // Clear auth data if no token
           localStorage.removeItem('user');
           setUser(null);
+          setIsAuthenticated(false);
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
+        setIsAuthenticated(false);
       } finally {
         setLoading(false);
       }
     };
 
+    // Listen for storage events (logout from another tab)
+    const handleStorageChange = (e) => {
+      if (e.key === 'token' || e.key === 'user') {
+        initAuth();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
     initAuth();
+    
+    // Clean up event listener
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   const login = async (username, password) => {
@@ -80,6 +99,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(userData));
         
         setUser(userData);
+        setIsAuthenticated(true);
         console.log("Development login successful", { token: mockToken, user: userData });
         return userData;
       }
@@ -92,6 +112,7 @@ export const AuthProvider = ({ children }) => {
       const userData = response.user || { username, name: username };
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
+      setIsAuthenticated(true);
       
       console.log("Login successful, token and user data saved");
       return userData;
@@ -115,6 +136,10 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    setIsAuthenticated(false);
+    
+    // Dispatch custom event for components to listen to
+    window.dispatchEvent(new Event('auth-logout'));
     console.log("Logged out, auth data cleared");
   };
 
@@ -126,7 +151,7 @@ export const AuthProvider = ({ children }) => {
         error,
         login,
         logout,
-        isAuthenticated: !!localStorage.getItem('token')
+        isAuthenticated
       }}
     >
       {children}
