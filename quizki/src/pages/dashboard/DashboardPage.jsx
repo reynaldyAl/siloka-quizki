@@ -9,6 +9,7 @@ const DashboardPage = () => {
   const [user, setUser] = useState(null);
   const [userAnswers, setUserAnswers] = useState([]);
   const [questions, setQuestions] = useState([]);
+  const [quizzes, setQuizzes] = useState([]); // Added quizzes state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -29,6 +30,7 @@ const DashboardPage = () => {
       let userData = null;
       let answersData = [];
       let questionsData = [];
+      let quizzesData = [];
       
       try {
         const userResponse = await api.get('/me');
@@ -56,6 +58,15 @@ const DashboardPage = () => {
         setQuestions(questionsData);
       } catch (questionsErr) {
         console.error("Failed to fetch questions:", questionsErr);
+      }
+      
+      // Added quizzes fetch
+      try {
+        const quizzesResponse = await api.get('/quizzes');
+        quizzesData = quizzesResponse.data || [];
+        setQuizzes(quizzesData);
+      } catch (quizzesErr) {
+        console.error("Failed to fetch quizzes:", quizzesErr);
       }
       
       // If we couldn't get user data but got past the 401 check,
@@ -146,6 +157,7 @@ const DashboardPage = () => {
       user={user}
       questions={questions}
       userAnswers={userAnswers}
+      quizzes={quizzes}
       totalQuizzesTaken={totalQuizzesTaken}
       averageScore={averageScore}
       onRefresh={fetchDashboardData}

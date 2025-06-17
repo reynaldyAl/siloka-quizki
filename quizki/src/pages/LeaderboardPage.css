@@ -1,0 +1,828 @@
+.cosmic-leaderboard-container {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: linear-gradient(to bottom, #0f172a, #0a0f1a);
+  color: #fff;
+  padding-bottom: 2rem;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Fixed Rank Badge Styling */
+.cosmic-td {
+  padding: 16px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 4px 6px;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+
+/* Star icon as pseudo-element instead of SVG */
+.rank-badge::before {
+  content: "★";
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: currentColor;
+  font-size: 12px;
+}
+
+
+
+.rank-badge.gold {
+  background: linear-gradient(45deg, #fcd34d, #f59e0b);
+  color: #7e6b18;
+}
+
+.rank-badge.silver {
+  background: linear-gradient(45deg, #e5e7eb, #d1d5db);
+  color: #4b5563;
+}
+
+.rank-badge.bronze {
+  background: linear-gradient(45deg, #d97706, #92400e);
+  color: #ffffff;
+}
+
+.rank-number {
+  font-size: 16px;
+  font-weight: 500;
+  color: #94a3b8;
+  display: inline-block;
+  width: 32px;
+  text-align: center;
+}
+
+/* Stars Background */
+.stars-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.stars {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-repeat: repeat;
+  z-index: -1;
+}
+
+.stars.small {
+  background-image: radial-gradient(1px 1px at 50% 50%, rgba(255, 255, 255, 0.7), rgba(0, 0, 0, 0));
+  background-size: 100px 100px;
+  animation: twinkle 3s infinite alternate;
+}
+
+.stars.medium {
+  background-image: radial-gradient(1.5px 1.5px at 50% 50%, rgba(255, 255, 255, 0.8), rgba(0, 0, 0, 0));
+  background-size: 150px 150px;
+  animation: twinkle 5s infinite alternate;
+}
+
+.stars.large {
+  background-image: radial-gradient(2px 2px at 50% 50%, rgba(255, 255, 255, 0.9), rgba(0, 0, 0, 0));
+  background-size: 200px 200px;
+  animation: twinkle 7s infinite alternate;
+}
+
+@keyframes twinkle {
+  0% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+/* Shooting star animation */
+.shooting-star {
+  position: absolute;
+  top: 50px;
+  left: 80%;
+  width: 100px;
+  height: 2px;
+  background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,1) 50%, rgba(255,255,255,0));
+  transform: rotate(-45deg);
+  animation: shooting-star 4s linear infinite;
+  opacity: 0;
+}
+
+.shooting-star.delay-2 {
+  top: 30%;
+  left: 20%;
+  animation-delay: 2s;
+}
+
+@keyframes shooting-star {
+  0% { 
+    transform: translateX(0) translateY(0) rotate(-45deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  20% { 
+    transform: translateX(-300px) translateY(300px) rotate(-45deg);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-300px) translateY(300px) rotate(-45deg);
+  }
+}
+
+/* Cosmic glow text */
+.glow-text {
+  text-shadow: 0 0 10px rgba(127, 220, 255, 0.5);
+  position: relative;
+  animation: pulse-glow 4s infinite alternate;
+}
+
+@keyframes pulse-glow {
+  0% { text-shadow: 0 0 10px rgba(127, 220, 255, 0.3); }
+  100% { text-shadow: 0 0 20px rgba(127, 220, 255, 0.7); }
+}
+
+/* Cosmic Loader */
+.cosmos-loader {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.planet {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, #8a2be2, #4169e1);
+  box-shadow: 0 0 15px rgba(138, 43, 226, 0.7),
+              0 0 30px rgba(138, 43, 226, 0.4);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.orbit {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: rotate 2s linear infinite;
+}
+
+.satellite {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #00ffff;
+  box-shadow: 0 0 10px #00ffff;
+  top: -5px;
+  left: 45%;
+}
+
+@keyframes rotate {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Error meteor */
+.error-meteor {
+  animation: meteor 0.5s ease-out;
+}
+
+@keyframes meteor {
+  0% { transform: translateY(-50px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Cosmic Tabs */
+.cosmic-tabs-container {
+  display: flex;
+  background-color: rgba(17, 24, 39, 0.5);
+  border-radius: 12px;
+  padding: 3px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.15);
+}
+
+.cosmic-tab {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  transition: all 0.2s ease;
+}
+
+.cosmic-tab:hover {
+  color: #fff;
+  background-color: rgba(99, 102, 241, 0.1);
+}
+
+.cosmic-tab.active {
+  background: linear-gradient(45deg, rgba(59, 130, 246, 0.8), rgba(139, 92, 246, 0.8));
+  color: white;
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+}
+
+/* Cosmic Podium */
+.cosmic-podium {
+  position: relative;
+  height: 280px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  margin-bottom: 2rem;
+  perspective: 1000px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.cosmic-podium.show-podium {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.sparkles-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.sparkle {
+  position: absolute;
+  background-color: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+  animation: sparkle 2s infinite ease-in-out;
+}
+
+@keyframes sparkle {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+.podium-container {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  max-width: 600px;
+  height: 250px;
+  position: relative;
+}
+
+.podium-place {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: 33.33%;
+  height: 100%;
+  position: relative;
+  transition: all 0.5s ease;
+}
+
+.first-place {
+  z-index: 3;
+  animation: first-place 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.3s both;
+}
+
+.second-place {
+  z-index: 2;
+  animation: second-place 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.5s both;
+}
+
+.third-place {
+  z-index: 1;
+  animation: third-place 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.7s both;
+}
+
+@keyframes first-place {
+  from { transform: translateY(50px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes second-place {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes third-place {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.podium-block {
+  width: 80%;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.8) 0%, rgba(67, 56, 202, 0.8) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  box-shadow: 0 -4px 10px rgba(99, 102, 241, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.first-place .podium-block {
+  height: 120px;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.9) 0%, rgba(67, 56, 202, 0.9) 100%);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+}
+
+.second-place .podium-block {
+  height: 90px;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.8) 0%, rgba(67, 56, 202, 0.8) 100%);
+}
+
+.third-place .podium-block {
+  height: 60px;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.7) 0%, rgba(67, 56, 202, 0.7) 100%);
+}
+.podium-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5, #7e22ce);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 24px;
+  position: relative;
+}
+
+.medal {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  top: 65px;
+  right: 28%;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+
+.gold {
+  background: linear-gradient(45deg, #f3c623, #ffd700);
+  color: #7e6b18;
+}
+
+.silver {
+  background: linear-gradient(45deg, #c0c0c0, #e6e6e6);
+  color: #555;
+}
+
+.bronze {
+  background: linear-gradient(45deg, #cd7f32, #e6b36d);
+  color: #6b4016;
+}
+
+.crown {
+  position: absolute;
+  top: 25px;
+  color: #ffd700;
+  filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.7));
+  animation: float 2s infinite alternate ease-in-out;
+}
+
+.crown svg {
+  width: 30px;
+  height: 30px;
+}
+
+@keyframes float {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-5px); }
+}
+
+.username {
+  font-weight: bold;
+  margin-bottom: 5px;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.score {
+  padding: 2px 8px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: #a5f3fc;
+}
+
+/* Cosmic User Card */
+.cosmic-user-card {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(99, 102, 241, 0.2));
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 16px;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
+  overflow: hidden;
+}
+
+.cosmic-user-heading {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.7), rgba(99, 102, 241, 0.7));
+  padding: 12px 24px;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.cosmic-user-content {
+  padding: 24px;
+}
+
+.cosmic-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 24px;
+  background: linear-gradient(135deg, #4f46e5, #7e22ce);
+  position: relative;
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.cosmic-avatar.your-avatar {
+  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  box-shadow: 0 0 15px rgba(79, 70, 229, 0.6);
+}
+
+.cosmic-avatar.top-1 {
+  background: linear-gradient(135deg, #fcd34d, #f59e0b);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.6);
+}
+
+.cosmic-avatar.top-2 {
+  background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+  box-shadow: 0 0 15px rgba(209, 213, 219, 0.6);
+}
+
+.cosmic-avatar.top-3 {
+  background: linear-gradient(135deg, #ca8a04, #92400e);
+  box-shadow: 0 0 15px rgba(146, 64, 14, 0.6);
+}
+
+.cosmic-avatar-glow {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.1); opacity: 0.1; }
+  100% { transform: scale(1); opacity: 0.3; }
+}
+
+.badge-container {
+  display: flex;
+  margin-top: 4px;
+}
+
+.badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  color: white;
+  background-color: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(5px);
+}
+
+.badge-cosmic {
+  background: linear-gradient(90deg, #6366f1, #a855f7);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.5);
+}
+
+.badge-galaxy {
+  background: linear-gradient(90deg, #3b82f6, #6366f1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.badge-star {
+  background: linear-gradient(90deg, #10b981, #3b82f6);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.badge-cadet {
+  background: linear-gradient(90deg, #0ea5e9, #2563eb);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+}
+
+.badge-rookie {
+  background: linear-gradient(90deg, #6b7280, #4b5563);
+  border: 1px solid rgba(75, 85, 99, 0.3);
+}
+
+.stat {
+  text-align: center;
+  padding: 8px 16px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  min-width: 100px;
+}
+
+/* Login prompt */
+.cosmic-login-prompt {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.2), rgba(91, 33, 182, 0.2));
+  border: 1px solid rgba(79, 70, 229, 0.3);
+  border-radius: 16px;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.2);
+  padding: 24px;
+  text-align: center;
+}
+
+.cosmic-button-primary {
+  background: linear-gradient(90deg, #4f46e5, #7e22ce);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 10px rgba(79, 70, 229, 0.3);
+}
+
+.cosmic-button-primary:hover {
+  background: linear-gradient(90deg, #6366f1, #9333ea);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.5);
+  transform: translateY(-2px);
+}
+
+.cosmic-button-secondary {
+  background: transparent;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  border: 1px solid rgba(79, 70, 229, 0.5);
+  transition: all 0.3s ease;
+}
+
+.cosmic-button-secondary:hover {
+  background-color: rgba(79, 70, 229, 0.1);
+  border-color: rgba(79, 70, 229, 0.8);
+}
+
+.cosmic-button-small {
+  background: transparent;
+  color: #a5b4fc;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  border: 1px solid rgba(165, 180, 252, 0.3);
+  transition: all 0.2s ease;
+}
+
+.cosmic-button-small:hover {
+  background-color: rgba(79, 70, 229, 0.1);
+  color: white;
+  border-color: rgba(165, 180, 252, 0.6);
+}
+
+/* Fade in animation */
+.fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Stat Cards */
+.stat-card {
+  background-color: rgba(30, 41, 59, 0.6);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.stat-title {
+  color: #94a3b8;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  color: #f1f5f9;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+/* Cosmic Table */
+.cosmic-table {
+  background-color: rgba(30, 41, 59, 0.4);
+  border-radius: 16px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  backdrop-filter: blur(5px);
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.3);
+}
+
+.cosmic-table-header {
+  background: linear-gradient(90deg, rgba(30, 41, 59, 0.8), rgba(30, 41, 59, 0.6));
+  backdrop-filter: blur(5px);
+}
+
+.cosmic-th {
+  padding: 16px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.cosmic-td {
+  padding: 16px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.cosmic-table-row {
+  transition: all 0.2s ease;
+}
+
+.cosmic-table-row:hover {
+  background-color: rgba(99, 102, 241, 0.1);
+}
+
+.cosmic-table-row-highlight {
+  background-color: rgba(79, 70, 229, 0.2);
+  position: relative;
+}
+
+.cosmic-table-row-highlight::before {
+
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 3px;
+  background: linear-gradient(to bottom, #4f46e5, #7e22ce);
+}
+
+.top-ten {
+  position: relative;
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.rank-badge.gold {
+  background: linear-gradient(45deg, #fcd34d, #f59e0b);
+  color: #7e6b18;
+}
+
+.rank-badge.silver {
+  background: linear-gradient(45deg, #e5e7eb, #d1d5db);
+  color: #4b5563;
+}
+
+.rank-badge.bronze {
+  background: linear-gradient(45deg, #d97706, #92400e);
+  color: #ffffff;
+}
+
+.rank-number {
+  font-size: 16px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+/* Fix score header alignment - shifted left */
+.cosmic-th.text-right {
+  text-align: center;
+  padding-right: 25px !important; /* Reduced from 40px to shift left */
+}
+
+/* Fix score cell alignment - shifted left */
+.cosmic-td.text-right {
+  text-align: center;
+  padding-right: 25px !important; /* Reduced from 40px to shift left */
+
+}
+
+/* Position score value and sparkle together */
+.score-display {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Score value styling */
+.score-value {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-right: 5px; /* Space between number and star */
+}
+
+/* Sparkle positioning */
+.score-sparkle {
+  width: 20px;
+  height: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239c59d1'%3E%3Cpath d='M12 1l3.22 6.52 7.28.96-5.34 5.2 1.28 7.32L12 17.77l-6.44 3.23 1.28-7.32-5.34-5.2 7.28-.96L12 1z'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: inline-block;
+  vertical-align: middle;
+  animation: twinkle-star 2s infinite alternate;
+}
+
+@keyframes twinkle-star {
+  0% { opacity: 0.3; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1.1); }
+}
+
+@keyframes gradient-animation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Make container full screen but below navbar */
+.cosmic-leaderboard-container {
+  position: absolute; /* Changed from fixed to absolute */
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 100vh; /* Use min-height instead of height */
+  width: 100%;
+  margin: 0;
+  padding-top: 70px; /* Add padding for navbar height - adjust this value */
+  padding-bottom: 2rem;
+  overflow-y: auto;
+  z-index: 0; /* Below navbar */
+  background: linear-gradient(to bottom, #0f172a, #0a0f1a);
+}
+
+/* Stars background adjustments */
+.stars-background {
+  position: fixed; /* Keep stars fixed */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1; /* Below content */
+}
+
+/* Container content padding */
+.cosmic-leaderboard-container > .container {
+  padding-top: 1rem;
+  min-height: calc(100vh - 70px); /* Account for navbar */
+}
+

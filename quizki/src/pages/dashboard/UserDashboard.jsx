@@ -1,4 +1,3 @@
-// pages/dashboard/UserDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import StatCard from '../../components/dashboard/StatCard';
@@ -313,6 +312,10 @@ const UserDashboard = () => {
         <div className="stars-bg small absolute inset-0 opacity-20"></div>
         <div className="p-6">
           <h1 className="text-3xl font-bold text-white mb-2">Welcome, {user.username || 'Explorer'}!</h1>
+          <p className="text-blue-100">
+            Logged in as <span className="font-bold text-white">{user.username || 'Explorer'}</span>
+            {user.role === 'admin' ? ' (Admin)' : ' (User)'}
+          </p>
           <p className="text-blue-100">
             Your current rank: <span className="font-bold text-white">{userRank}</span>
           </p>

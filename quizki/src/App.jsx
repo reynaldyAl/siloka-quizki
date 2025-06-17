@@ -1,4 +1,3 @@
-// App.jsx - Complete with all routes
 import React from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { QuizProvider } from './contexts/QuizContext';
@@ -18,6 +17,7 @@ import QuizListPage from './pages/quiz/QuizListPage';
 import QuizDetailPage from './pages/quiz/QuizDetailPage';
 import TakeQuizPage from './pages/quiz/TakeQuizPage';
 import QuizResultsPage from './pages/quiz/QuizResultsPage';
+import LeaderboardPage from './pages/LeaderboardPage'; // Added LeaderboardPage import
 import NotFoundPage from './pages/NotFoundPage';
 
 // Admin Pages
@@ -89,6 +89,9 @@ function App() {
                   <ProfilePage />
                 </ProtectedRoute>
               } />
+              
+              {/* Leaderboard Route */}
+              <Route path="/leaderboard" element={<LeaderboardPage />} />
               
               {/* Quiz Routes */}
               <Route path="/quizzes" element={<QuizListPage />} />
