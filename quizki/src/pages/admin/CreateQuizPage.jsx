@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import quizService from '../../services/quizService';
 
 const CreateQuizPage = () => {
   const navigate = useNavigate();
@@ -17,6 +18,25 @@ const CreateQuizPage = () => {
   });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  
+  // Check admin status on component load
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const response = await api.get('/me');
+        if (response.data.role !== 'admin') {
+          setError('Admin privileges required to create quizzes');
+          setTimeout(() => navigate('/dashboard'), 3000);
+        }
+      } catch (err) {
+        console.error('Error checking user role:', err);
+        setError('Authentication error. Please log in again.');
+        setTimeout(() => navigate('/login'), 2000);
+      }
+    };
+    
+    checkAdminStatus();
+  }, [navigate]);
   
   // Fetch available questions when component mounts
   useEffect(() => {
@@ -74,22 +94,31 @@ const CreateQuizPage = () => {
         questions: selectedQuestions
       };
       
-      console.log('Creating quiz:', quizPayload);
+      console.log('Creating quiz with direct API call:', quizPayload);
       
-      // Send request to API
+      // Use the SAME direct API call pattern that works for question creation
       const response = await api.post('/quizzes', quizPayload);
-      console.log('Quiz created:', response.data);
       
+      console.log('Quiz created successfully:', response.data);
       setSuccess(true);
       
-      // Redirect to quiz list after a delay
+      // Redirect to dashboard after a delay
       setTimeout(() => {
-        navigate('/admin/quizzes');
+        navigate('/dashboard');
       }, 2000);
       
     } catch (err) {
       console.error('Error creating quiz:', err);
-      setError(err.response?.data?.message || 'Failed to create quiz. Please try again.');
+      
+      if (err.response?.status === 401) {
+        // Handle authentication errors specifically
+        setError('Authentication failed. Please log in again as an admin user.');
+        setTimeout(() => navigate('/login'), 2000);
+      } else {
+        setError(err.response?.data?.detail || 
+                 err.response?.data?.message || 
+                 'Failed to create quiz. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

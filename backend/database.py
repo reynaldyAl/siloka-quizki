@@ -25,6 +25,7 @@ class User(Base):
 
     questions = relationship("Question", back_populates="creator")
     answers = relationship("Answer", back_populates="user")
+    quizzes = relationship("Quiz", back_populates="creator")  # Added relationship
 
 class Question(Base):
     __tablename__ = "questions"
@@ -63,6 +64,28 @@ class Answer(Base):
     user = relationship("User", back_populates="answers")
     question = relationship("Question", back_populates="answers")
     choice = relationship("Choice", back_populates="answers")
+
+# New Quiz Models
+class Quiz(Base):
+    __tablename__ = "quizzes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    description = Column(Text)
+    category = Column(String)
+    difficulty = Column(String, default="medium")
+    time_limit = Column(Integer, default=15)  # in minutes
+    creator_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    creator = relationship("User", back_populates="quizzes")
+    questions = relationship("Question", secondary="quiz_questions")
+
+class QuizQuestion(Base):
+    __tablename__ = "quiz_questions"
+
+    quiz_id = Column(Integer, ForeignKey("quizzes.id", ondelete="CASCADE"), primary_key=True)
+    question_id = Column(Integer, ForeignKey("questions.id", ondelete="CASCADE"), primary_key=True)
 
 # Create tables
 Base.metadata.create_all(bind=engine)

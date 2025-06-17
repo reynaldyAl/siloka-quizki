@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import List, Optional
+from typing import List, Optional, Any
 from datetime import datetime
 
 # User Schemas
@@ -77,6 +77,52 @@ class AnswerResponse(BaseModel):
     
     class Config:
         from_attributes = True
+        arbitrary_types_allowed = True
+
+# Quiz Schemas
+class QuizBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    difficulty: str = "medium"
+    time_limit: int = 15
+    questions: List[int] = []
+
+class QuizCreate(QuizBase):
+    pass
+
+class QuizUpdate(QuizBase):
+    pass
+
+class QuizResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    difficulty: str
+    time_limit: int
+    creator_id: int
+    created_at: datetime
+    questions: List[Any] = []  # Allow any type of list content
+    
+    class Config:
+        from_attributes = True
+        arbitrary_types_allowed = True
+
+class QuizDetailResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    difficulty: str
+    time_limit: int
+    creator_id: int
+    created_at: datetime
+    questions: List[Any] = []  # Allow any type of question data
+    
+    class Config:
+        from_attributes = True
+        arbitrary_types_allowed = True
 
 # Auth Schemas
 class Token(BaseModel):

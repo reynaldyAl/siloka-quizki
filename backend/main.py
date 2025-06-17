@@ -12,13 +12,17 @@ from database import get_db, User
 
 app = FastAPI(title="QuizKi API", description="Quiz Application API", version="1.0.0")
 
-# Add CORS middleware
+# Modify your CORS middleware configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend domain
+    # Explicitly list all allowed origins instead of using "*" when credentials are enabled
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Add the following to ensure OPTIONS requests work correctly
+    expose_headers=["*"],
+    max_age=600,  # Cache preflight requests for 10 minutes
 )
 
 security = HTTPBearer(auto_error=False)
@@ -178,11 +182,18 @@ def delete_question(
     db: Session = Depends(get_db),
     current_user: User = Depends(auth.require_admin)
 ):
-    db_question = crud.delete_question(db, question_id=question_id)
-    if db_question is None:
-        raise HTTPException(status_code=404, detail="Question not found")
-    return {"message": "Question deleted successfully"}
-
+    try:
+        db_question = crud.delete_question(db, question_id=question_id)
+        if db_question is None:
+            raise HTTPException(status_code=404, detail="Question not found")
+        return {"message": "Question deleted successfully", "id": question_id}
+    except Exception as e:
+        # Don't catch HTTPExceptions - let them pass through
+        if isinstance(e, HTTPException):
+            raise e
+        # Log the error
+        print(f"Error deleting question {question_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error deleting question")
 # Answer endpoints
 @app.post("/answers", response_model=schemas.AnswerResponse)
 def submit_answer(
@@ -207,6 +218,66 @@ def get_my_answers(
     current_user: User = Depends(auth.get_current_user)
 ):
     return crud.get_user_answers(db, user_id=current_user.id)
+
+# Quiz endpoints - New
+@app.post("/quizzes", response_model=schemas.QuizResponse)
+def create_quiz(
+    quiz: schemas.QuizCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth.require_admin)
+):
+    return crud.create_quiz(db=db, quiz=quiz, creator_id=current_user.id)
+
+@app.get("/quizzes", response_model=List[schemas.QuizResponse])
+def read_quizzes(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    return crud.get_quizzes(db, skip=skip, limit=limit)
+
+@app.get("/quizzes/{quiz_id}", response_model=schemas.QuizDetailResponse)
+def read_quiz(
+    quiz_id: int,
+    db: Session = Depends(get_db)
+):
+    quiz = crud.get_quiz_with_questions(db, quiz_id=quiz_id)
+    if quiz is None:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    return quiz
+
+@app.put("/quizzes/{quiz_id}", response_model=schemas.QuizResponse)
+def update_quiz(
+    quiz_id: int,
+    quiz: schemas.QuizUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth.require_admin)
+):
+    db_quiz = crud.update_quiz(db, quiz_id=quiz_id, quiz=quiz)
+    if db_quiz is None:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    return db_quiz
+
+@app.options("/quizzes", include_in_schema=False)
+async def options_quiz():
+    return {}
+
+@app.options("/questions", include_in_schema=False)
+async def options_question():
+    return {}
+
+@app.delete("/quizzes/{quiz_id}")
+def delete_quiz(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth.require_admin)
+):
+    db_quiz = crud.delete_quiz(db, quiz_id=quiz_id)
+    if db_quiz is None:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    return {"message": "Quiz deleted successfully"}
+
+
 
 if __name__ == "__main__":
     import uvicorn
