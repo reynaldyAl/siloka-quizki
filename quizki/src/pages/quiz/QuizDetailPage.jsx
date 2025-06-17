@@ -1,11 +1,11 @@
+// src/pages/quiz/QuizDetailPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import Navbar from '../../components/common/Navbar/Navbar';
-import Button from '../../components/common/Button/Button';
+import quizService from '../../services/quizService';
 import './QuizDetailPage.css';
 
 const QuizDetailPage = () => {
-  const { quizId } = useParams();
+  const { id: quizId } = useParams();
   const navigate = useNavigate();
   const [quiz, setQuiz] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,28 +23,8 @@ const QuizDetailPage = () => {
     const fetchQuizData = async () => {
       setLoading(true);
       try {
-        // For demo purposes, we're using mock data
-        // In a real app, you would fetch data from your API
-        await new Promise(resolve => setTimeout(resolve, 600)); // Simulate API delay
-        
-        // Mock quiz data
-        const mockQuiz = {
-          id: quizId,
-          title: "Space Exploration Quiz",
-          description: "Test your knowledge about the universe, planets, and space exploration missions.",
-          thumbnail: "https://images.unsplash.com/photo-1614730321146-b6fa6a46bcb4?q=80&w=400&auto=format&fit=crop",
-          category: "Astronomy",
-          difficulty: "Intermediate",
-          questionCount: 10,
-          estimatedTime: "15 minutes",
-          creator: "SpaceExplorer42",
-          createdAt: "2025-05-10T12:00:00Z",
-          attempts: 234,
-          avgScore: 74,
-          tags: ["space", "astronomy", "planets", "nasa"]
-        };
-        
-        setQuiz(mockQuiz);
+        const quizData = await quizService.getQuizById(quizId);
+        setQuiz(quizData);
       } catch (err) {
         console.error("Error fetching quiz:", err);
         setError("Failed to load quiz details. Please try again.");
@@ -59,17 +39,16 @@ const QuizDetailPage = () => {
   const handleStartQuiz = () => {
     if (!user) {
       // If user is not logged in, redirect to login
-      navigate('/login', { state: { from: `/quiz/${quizId}` } });
+      navigate('/login', { state: { from: `/quizzes/${quizId}` } });
     } else {
       // If user is logged in, navigate to take quiz
-      navigate(`/quiz/${quizId}/take`);
+      navigate(`/quizzes/${quizId}/take`);
     }
   };
 
   if (loading) {
     return (
       <div className="quiz-detail-container">
-        <Navbar />
         <div className="quiz-detail-content loading">
           <div className="cosmic-loader">
             <div className="orbit-spinner">
@@ -86,15 +65,12 @@ const QuizDetailPage = () => {
   if (error || !quiz) {
     return (
       <div className="quiz-detail-container">
-        <Navbar />
         <div className="quiz-detail-content">
           <div className="quiz-error">
             <h2>Houston, we have a problem</h2>
             <p>{error || "Quiz not found"}</p>
-            <Link to="/quizzes">
-              <Button variant="secondary" theme="space">
-                Return to Quiz List
-              </Button>
+            <Link to="/quizzes" className="error-action-button">
+              Return to Quiz List
             </Link>
           </div>
         </div>
@@ -102,11 +78,11 @@ const QuizDetailPage = () => {
     );
   }
 
+  // Generate a thumbnail image based on the category if none is provided
+  const thumbnail = quiz.thumbnail || `https://source.unsplash.com/400x300/?${quiz.category.toLowerCase().replace(' ', ',')}`;
+
   return (
     <div className="quiz-detail-container">
-      <Navbar />
-      
-      {/* Star background */}
       <div className="stars-bg small"></div>
       <div className="stars-bg medium"></div>
       <div className="stars-bg large"></div>
@@ -114,7 +90,7 @@ const QuizDetailPage = () => {
       <div className="quiz-detail-content">
         <div className="quiz-header">
           <div className="quiz-thumbnail">
-            <img src={quiz.thumbnail} alt={quiz.title} />
+            <img src={thumbnail} alt={quiz.title} />
             <div className="quiz-difficulty">
               <span className={`difficulty-badge ${quiz.difficulty.toLowerCase()}`}>
                 {quiz.difficulty}
@@ -128,62 +104,36 @@ const QuizDetailPage = () => {
             
             <div className="quiz-meta">
               <div className="meta-item">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span>Created {new Date(quiz.createdAt).toLocaleDateString()}</span>
-              </div>
-              <div className="meta-item">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="meta-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span>{quiz.estimatedTime}</span>
+                <span>{quiz.timeLimit} minutes</span>
               </div>
               <div className="meta-item">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="meta-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span>{quiz.questionCount} Questions</span>
               </div>
               <div className="meta-item">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="meta-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                 </svg>
-                <span>Created by {quiz.creator}</span>
+                <span>Category: {quiz.category}</span>
               </div>
             </div>
 
-            <div className="quiz-stats">
-              <div className="stat-item">
-                <div className="stat-value">{quiz.attempts}</div>
-                <div className="stat-label">Attempts</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-value">{quiz.avgScore}%</div>
-                <div className="stat-label">Avg. Score</div>
-              </div>
-            </div>
-            
-            <div className="quiz-tags">
-              {quiz.tags.map(tag => (
-                <span key={tag} className="quiz-tag">{tag}</span>
-              ))}
-            </div>
+            {/* Additional quiz info could go here */}
             
             <div className="quiz-actions">
-              <Button 
-                variant="primary" 
-                theme="space"
-                size="large"
-                onClick={handleStartQuiz}
+              <button 
                 className="start-quiz-button"
+                onClick={handleStartQuiz}
               >
                 Start Quiz
-              </Button>
-              <Link to="/quizzes">
-                <Button variant="secondary" theme="space">
-                  Back to List
-                </Button>
+              </button>
+              <Link to="/quizzes" className="back-button">
+                Back to List
               </Link>
             </div>
           </div>

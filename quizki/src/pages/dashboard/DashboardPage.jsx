@@ -5,7 +5,7 @@ import api from '../../services/api';
 import AdminDashboard from './AdminDashboard';
 import UserDashboard from './UserDashboard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import './Dashboard.css';
+
 
 const DashboardPage = () => {
   const [user, setUser] = useState(null);

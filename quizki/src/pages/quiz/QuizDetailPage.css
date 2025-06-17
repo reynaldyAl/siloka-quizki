@@ -1,14 +1,10 @@
+/* QuizDetailPage.css */
 .quiz-detail-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100vw;
-  height: 100vh;
+  min-height: 100vh;
   background: linear-gradient(to bottom, #0f172a, #1e293b);
-  overflow-y: auto;
-  z-index: 0;
+  position: relative;
+  overflow-x: hidden;
+  color: white;
 }
 
 /* Stars background */
@@ -16,16 +12,41 @@
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-  z-index: 990;
+  z-index: 0;
+}
+
+.stars-bg.small {
+  background-image: radial-gradient(1px 1px at 20px 30px, #eee, rgba(0, 0, 0, 0)),
+                  radial-gradient(1px 1px at 40px 70px, #fff, rgba(0, 0, 0, 0)),
+                  radial-gradient(1px 1px at 50px 160px, #ddd, rgba(0, 0, 0, 0)),
+                  radial-gradient(1px 1px at 90px 40px, #fff, rgba(0, 0, 0, 0)),
+                  radial-gradient(1px 1px at 130px 80px, #fff, rgba(0, 0, 0, 0)),
+                  radial-gradient(1px 1px at 160px 120px, #ddd, rgba(0, 0, 0, 0));
+  background-repeat: repeat;
+}
+
+.stars-bg.medium {
+  background-image: radial-gradient(2px 2px at 100px 300px, #eee, rgba(0, 0, 0, 0)),
+                  radial-gradient(2px 2px at 200px 250px, #fff, rgba(0, 0, 0, 0)),
+                  radial-gradient(2px 2px at 300px 350px, #ddd, rgba(0, 0, 0, 0)),
+                  radial-gradient(2px 2px at 400px 100px, #fff, rgba(0, 0, 0, 0));
+  background-repeat: repeat;
+}
+
+.stars-bg.large {
+  background-image: radial-gradient(3px 3px at 120px 40px, #eee, rgba(0, 0, 0, 0)),
+                  radial-gradient(3px 3px at 250px 170px, #fff, rgba(0, 0, 0, 0)),
+                  radial-gradient(3px 3px at 370px 290px, #ddd, rgba(0, 0, 0, 0));
+  background-repeat: repeat;
 }
 
 .quiz-detail-content {
   position: relative;
   z-index: 10;
-  padding-top: 100px; /* Padding from navbar */
+  padding-top: 80px; /* Adjusted padding from navbar */
   padding-bottom: 40px;
   max-width: 1200px;
   margin: 0 auto;
@@ -264,6 +285,73 @@
 .quiz-error p {
   color: #fca5a5;
   margin-bottom: 2rem;
+}
+
+/* Added styling for quiz list items shown in image */
+.quiz-list-item {
+  background-color: rgba(30, 41, 59, 0.8);
+  border-radius: 12px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  padding: 24px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(10px);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.quiz-list-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.quiz-list-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: white;
+}
+
+.quiz-list-description {
+  color: #94a3b8;
+  margin-bottom: 16px;
+}
+
+.quiz-list-meta {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 16px;
+  color: #64748b;
+}
+
+.quiz-list-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quiz-list-meta-item svg {
+  width: 18px;
+  height: 18px;
+  color: #38bdf8;
+}
+
+.quiz-list-action {
+  margin-top: 8px;
+}
+
+.view-quiz-btn {
+  display: inline-block;
+  padding: 8px 16px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 8px;
+  color: #38bdf8;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.view-quiz-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
 }
 
 /* Responsive styles */

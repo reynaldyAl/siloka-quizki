@@ -1,77 +1,125 @@
 // components/dashboard/QuestionManagement.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import PropTypes from 'prop-types';
+import api from '../../services/api';
 
 const QuestionManagement = ({ questions }) => {
-  if (!questions || questions.length === 0) {
-    return (
-      <div className="text-center py-8 text-gray-400">
-        <p>No questions found.</p>
-        <Link to="/admin/create-question" className="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-          Create Your First Question
-        </Link>
-      </div>
-    );
-  }
+  const [searchTerm, setSearchTerm] = useState('');
+  const [deleting, setDeleting] = useState(null);
+  const [error, setError] = useState(null);
   
-  // Display recent 5 questions
-  const recentQuestions = [...questions]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 5);
+  // Filter questions based on search term
+  const filteredQuestions = questions.filter(question => 
+    question.question_text.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
+  const handleDelete = async (questionId) => {
+    if (!confirm('Are you sure you want to delete this question? This action cannot be undone.')) {
+      return;
+    }
     
+    try {
+      setDeleting(questionId);
+      setError(null);
+      
+      await api.delete(`/questions/${questionId}`);
+      
+      // Remove the question from the list (would be better to refetch, but this is a quick update)
+      window.location.reload();
+    } catch (err) {
+      console.error('Error deleting question:', err);
+      setError('Failed to delete question. Please try again.');
+    } finally {
+      setDeleting(null);
+    }
+  };
+  
   return (
     <div>
-      <div className="space-y-2">
-        {recentQuestions.map(question => (
-          <div 
-            key={question.id} 
-            className="bg-gray-700 p-3 rounded-lg flex justify-between items-center hover:bg-gray-650 transition-colors"
-          >
-            <div className="truncate mr-4">
-              <p className="text-white font-medium truncate" style={{maxWidth: '300px'}}>
-                {question.text}
-              </p>
-              <p className="text-gray-400 text-xs mt-1">
-                {question.choices.length} options • ID: {question.id}
-              </p>
-            </div>
-            <div className="flex space-x-3">
-              <Link 
-                to={`/admin/questions/${question.id}/edit`}
-                className="text-blue-400 hover:text-blue-300"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                </svg>
-              </Link>
-              <button 
-                className="text-red-400 hover:text-red-300"
-                onClick={() => alert(`Delete question ${question.id} (This would trigger a confirmation modal)`)}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+      {error && (
+        <div className="mb-4 p-3 bg-red-900/50 border border-red-700 text-red-200 rounded-lg">
+          {error}
+        </div>
+      )}
       
-      <div className="mt-4 text-center">
+      <div className="flex justify-between items-center mb-4">
+        <div className="relative flex-grow mr-4">
+          <input
+            type="text"
+            placeholder="Search questions..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+        </div>
+        
         <Link 
-          to="/admin/questions" 
-          className="text-blue-400 hover:text-blue-300"
+          to="/admin/create-question"
+          className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap"
         >
-          Manage all questions →
+          Add New
         </Link>
       </div>
+      
+      {filteredQuestions.length === 0 ? (
+        <div className="text-center py-8 text-gray-400">
+          {searchTerm ? 'No questions match your search.' : 'No questions available.'}
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-full divide-y divide-gray-700">
+            <thead>
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Question</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Category</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Difficulty</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-700">
+              {filteredQuestions.map(question => (
+                <tr key={question.id} className="hover:bg-gray-700/50">
+                  <td className="px-4 py-3 whitespace-normal">
+                    <div className="text-sm text-white">{question.question_text}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="text-sm text-white">{question.category || 'General'}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                      ${question.difficulty === 'easy' ? 'bg-green-800 text-green-200' : 
+                        question.difficulty === 'medium' ? 'bg-yellow-800 text-yellow-200' : 
+                        'bg-red-800 text-red-200'}`}>
+                      {question.difficulty || 'Medium'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                    <div className="flex space-x-2">
+                      <Link to={`/admin/edit-question/${question.id}`} className="text-blue-400 hover:text-blue-300">
+                        Edit
+                      </Link>
+                      <button 
+                        onClick={() => handleDelete(question.id)}
+                        disabled={deleting === question.id}
+                        className="text-red-400 hover:text-red-300 disabled:opacity-50"
+                      >
+                        {deleting === question.id ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
-};
-
-QuestionManagement.propTypes = {
-  questions: PropTypes.array.isRequired
 };
 
 export default QuestionManagement;

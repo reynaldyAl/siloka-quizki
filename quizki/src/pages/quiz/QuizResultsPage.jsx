@@ -1,11 +1,12 @@
+// src/pages/quiz/QuizResultsPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
-import Navbar from '../../components/common/Navbar/Navbar';
 import Button from '../../components/common/Button/Button';
+import quizService from '../../services/quizService';
 import './QuizResultsPage.css';
 
 const QuizResultsPage = () => {
-  const { quizId } = useParams();
+  const { id: quizId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const [results, setResults] = useState(null);
@@ -20,97 +21,77 @@ const QuizResultsPage = () => {
       return;
     }
     
-    // Otherwise fetch results (in real app)
+    // Otherwise fetch results from API
     const fetchResults = async () => {
       try {
         setLoading(true);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 800));
         
-        // Mock results data
-        const mockResults = {
+        // Get quiz info
+        const quiz = await quizService.getQuizById(quizId);
+        
+        // Get user's answers for this quiz
+        const userAnswers = await quizService.getUserAnswers();
+        
+        // Filter answers for this quiz's questions
+        const quizQuestionIds = quiz.questions;
+        const relevantAnswers = userAnswers.filter(answer => 
+          quizQuestionIds.includes(answer.question_id)
+        );
+        
+        // Get question details for all questions in this quiz
+        const questionPromises = quizQuestionIds.map(qId => 
+          quizService.getQuestionById(qId)
+        );
+        
+        const questions = await Promise.all(questionPromises);
+        
+        // Build results data
+        const correctAnswers = relevantAnswers.filter(answer => answer.is_correct);
+        
+        // Create mock time spent (since we don't have this from API)
+        const randomMins = Math.floor(Math.random() * 10) + 5; 
+        const randomSecs = Math.floor(Math.random() * 60);
+        const timeSpent = `${String(randomMins).padStart(2, '0')}:${String(randomSecs).padStart(2, '0')}`;
+        
+        const resultsData = {
           quizId,
-          quizTitle: "Space Exploration Quiz",
-          score: 7,
-          totalQuestions: 10,
-          timeSpent: "08:24",
-          passingScore: 6,
-          dateTaken: "2025-06-16T09:15:30",
-          questions: [
-            {
-              id: 1,
-              question: "What is the largest planet in our solar system?",
-              userAnswer: "Jupiter",
-              correctAnswer: "Jupiter",
-              isCorrect: true
-            },
-            {
-              id: 2,
-              question: "Which planet is known as the Red Planet?",
-              userAnswer: "Mars",
-              correctAnswer: "Mars",
-              isCorrect: true
-            },
-            {
-              id: 3,
-              question: "What is the name of the galaxy that contains our solar system?",
-              userAnswer: "Milky Way",
-              correctAnswer: "Milky Way",
-              isCorrect: true
-            },
-            {
-              id: 4,
-              question: "Who was the first human to walk on the moon?",
-              userAnswer: "Neil Armstrong",
-              correctAnswer: "Neil Armstrong",
-              isCorrect: true
-            },
-            {
-              id: 5,
-              question: "What is the closest star to Earth?",
-              userAnswer: "Proxima Centauri",
-              correctAnswer: "The Sun",
-              isCorrect: false
-            },
-            {
-              id: 6,
-              question: "What spacecraft carried the first astronauts to the moon?",
-              userAnswer: "Apollo 11",
-              correctAnswer: "Apollo 11",
-              isCorrect: true
-            },
-            {
-              id: 7,
-              question: "What is the largest moon in our solar system?",
-              userAnswer: "Titan",
-              correctAnswer: "Ganymede",
-              isCorrect: false
-            },
-            {
-              id: 8,
-              question: "Which planet has the Great Red Spot?",
-              userAnswer: "Jupiter",
-              correctAnswer: "Jupiter",
-              isCorrect: true
-            },
-            {
-              id: 9,
-              question: "What is the name of the first artificial satellite launched into space?",
-              userAnswer: "Explorer 1",
-              correctAnswer: "Sputnik 1",
-              isCorrect: false
-            },
-            {
-              id: 10,
-              question: "Which space agency launched the Hubble Space Telescope?",
-              userAnswer: "NASA",
-              correctAnswer: "NASA",
-              isCorrect: true
-            },
-          ]
+          quizTitle: quiz.title,
+          score: correctAnswers.length,
+          totalQuestions: questions.length,
+          timeSpent,
+          passingScore: Math.ceil(questions.length * 0.6), // 60% passing score
+          dateTaken: new Date().toISOString(),
+          questions: questions.map(question => {
+            // Find this question's answer
+            const answer = relevantAnswers.find(a => a.question_id === question.id);
+            
+            // Find the user's chosen answer
+            const userChoice = answer ? 
+              question.choices.find(c => c.id === answer.choice_id) : 
+              null;
+            
+            // Find the correct choice
+            const correctChoice = question.choices.find(choice => {
+              if (choice.is_correct === true) return true;
+              
+              // Fallback logic if is_correct is hidden
+              const answerForThisChoice = relevantAnswers.find(
+                a => a.question_id === question.id && a.choice_id === choice.id
+              );
+              return answerForThisChoice?.is_correct === true;
+            });
+            
+            return {
+              id: question.id,
+              question: question.text,
+              userAnswer: userChoice ? userChoice.text : "Not answered",
+              correctAnswer: correctChoice ? correctChoice.text : "Unknown",
+              isCorrect: answer?.is_correct === true
+            };
+          })
         };
         
-        setResults(mockResults);
+        setResults(resultsData);
       } catch (err) {
         console.error("Error fetching results:", err);
         setError("Failed to load quiz results. Please try again.");
@@ -123,7 +104,7 @@ const QuizResultsPage = () => {
   }, [location.state, quizId]);
 
   const handleRetakeQuiz = () => {
-    navigate(`/quiz/${quizId}/take`);
+    navigate(`/quizzes/${quizId}/take`);
   };
 
   // Calculate percentage
@@ -177,7 +158,8 @@ const QuizResultsPage = () => {
   if (loading) {
     return (
       <div className="quiz-results-container">
-        <Navbar />
+        <div className="stars-bg small"></div>
+        <div className="stars-bg medium"></div>
         <div className="quiz-results-content loading">
           <div className="cosmic-loader">
             <div className="orbit-spinner">
@@ -194,7 +176,8 @@ const QuizResultsPage = () => {
   if (error || !results) {
     return (
       <div className="quiz-results-container">
-        <Navbar />
+        <div className="stars-bg small"></div>
+        <div className="stars-bg medium"></div>
         <div className="quiz-results-content">
           <div className="results-error">
             <h2>Results Unavailable</h2>
@@ -214,9 +197,6 @@ const QuizResultsPage = () => {
 
   return (
     <div className="quiz-results-container">
-      <Navbar />
-      
-      {/* Star background */}
       <div className="stars-bg small"></div>
       <div className="stars-bg medium"></div>
       <div className="stars-bg large"></div>
@@ -333,7 +313,7 @@ const QuizResultsPage = () => {
             >
               Retake Quiz
             </Button>
-            <Link to={`/quiz/${quizId}`}>
+            <Link to={`/quizzes/${quizId}`}>
               <Button variant="secondary" theme="space">
                 Quiz Details
               </Button>

@@ -1,8 +1,8 @@
+// App.jsx - Complete with all routes
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { QuizProvider } from './contexts/QuizContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-
 
 // Layouts
 import MainLayout from './layouts/MainLayout';
@@ -20,9 +20,32 @@ import TakeQuizPage from './pages/quiz/TakeQuizPage';
 import QuizResultsPage from './pages/quiz/QuizResultsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
+// Admin Pages
+import CreateQuestionPage from './pages/admin/CreateQuestionPage';
+import EditQuestionPage from './pages/admin/EditQuestionPage';
+import CreateQuizPage from './pages/admin/CreateQuizPage';
+import EditQuizPage from './pages/admin/EditQuizPage';
+
 // Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+const ProtectedRoute = ({ children, requireAdmin = false }) => {
+  const { isAuthenticated, loading, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  React.useEffect(() => {
+    if (!loading) {
+      if (!isAuthenticated) {
+        // Redirect to login
+        navigate('/login', { 
+          replace: true, 
+          state: { from: location.pathname } 
+        });
+      } else if (requireAdmin && user?.role !== 'admin') {
+        // Redirect non-admin users attempting to access admin routes
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [isAuthenticated, loading, user, requireAdmin, navigate, location]);
   
   if (loading) {
     return (
@@ -32,8 +55,8 @@ const ProtectedRoute = ({ children }) => {
     );
   }
   
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  if (!isAuthenticated || (requireAdmin && user?.role !== 'admin')) {
+    return null; // Will redirect via useEffect
   }
   
   return children;
@@ -67,6 +90,7 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              {/* Quiz Routes */}
               <Route path="/quizzes" element={<QuizListPage />} />
               <Route path="/quizzes/:id" element={<QuizDetailPage />} />
               
@@ -82,6 +106,33 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              {/* Admin Routes - Question Management */}
+              <Route path="/admin/create-question" element={
+                <ProtectedRoute requireAdmin={true}>
+                  <CreateQuestionPage />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/edit-question/:id" element={
+                <ProtectedRoute requireAdmin={true}>
+                  <EditQuestionPage />
+                </ProtectedRoute>
+              } />
+              
+              {/* Admin Routes - Quiz Management */}
+              <Route path="/admin/create-quiz" element={
+                <ProtectedRoute requireAdmin={true}>
+                  <CreateQuizPage />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/edit-quiz/:id" element={
+                <ProtectedRoute requireAdmin={true}>
+                  <EditQuizPage />
+                </ProtectedRoute>
+              } />
+              
+              {/* Catch-all route for 404 */}
               <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Routes>
