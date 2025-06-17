@@ -1,1 +1,0 @@
-// hooks/useAuth.jsx - Custom hook for authentication

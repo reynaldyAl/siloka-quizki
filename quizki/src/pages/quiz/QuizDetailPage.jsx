@@ -1,0 +1,146 @@
+// src/pages/quiz/QuizDetailPage.jsx
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import quizService from '../../services/quizService';
+import './QuizDetailPage.css';
+
+const QuizDetailPage = () => {
+  const { id: quizId } = useParams();
+  const navigate = useNavigate();
+  const [quiz, setQuiz] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    // Check if user is logged in
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+
+    // Fetch quiz data
+    const fetchQuizData = async () => {
+      setLoading(true);
+      try {
+        const quizData = await quizService.getQuizById(quizId);
+        setQuiz(quizData);
+      } catch (err) {
+        console.error("Error fetching quiz:", err);
+        setError("Failed to load quiz details. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchQuizData();
+  }, [quizId]);
+
+  const handleStartQuiz = () => {
+    if (!user) {
+      // If user is not logged in, redirect to login
+      navigate('/login', { state: { from: `/quizzes/${quizId}` } });
+    } else {
+      // If user is logged in, navigate to take quiz
+      navigate(`/quizzes/${quizId}/take`);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="quiz-detail-container">
+        <div className="quiz-detail-content loading">
+          <div className="cosmic-loader">
+            <div className="orbit-spinner">
+              <div className="orbit"></div>
+              <div className="planet"></div>
+            </div>
+            <p>Loading quiz details...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !quiz) {
+    return (
+      <div className="quiz-detail-container">
+        <div className="quiz-detail-content">
+          <div className="quiz-error">
+            <h2>Houston, we have a problem</h2>
+            <p>{error || "Quiz not found"}</p>
+            <Link to="/quizzes" className="error-action-button">
+              Return to Quiz List
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Generate a thumbnail image based on the category if none is provided
+  const thumbnail = quiz.thumbnail || `https://source.unsplash.com/400x300/?${quiz.category.toLowerCase().replace(' ', ',')}`;
+
+  return (
+    <div className="quiz-detail-container">
+      <div className="stars-bg small"></div>
+      <div className="stars-bg medium"></div>
+      <div className="stars-bg large"></div>
+
+      <div className="quiz-detail-content">
+        <div className="quiz-header">
+          <div className="quiz-thumbnail">
+            <img src={thumbnail} alt={quiz.title} />
+            <div className="quiz-difficulty">
+              <span className={`difficulty-badge ${quiz.difficulty.toLowerCase()}`}>
+                {quiz.difficulty}
+              </span>
+            </div>
+          </div>
+          
+          <div className="quiz-info">
+            <h1>{quiz.title}</h1>
+            <p className="quiz-description">{quiz.description}</p>
+            
+            <div className="quiz-meta">
+              <div className="meta-item">
+                <svg xmlns="http://www.w3.org/2000/svg" className="meta-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{quiz.timeLimit} minutes</span>
+              </div>
+              <div className="meta-item">
+                <svg xmlns="http://www.w3.org/2000/svg" className="meta-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{quiz.questionCount} Questions</span>
+              </div>
+              <div className="meta-item">
+                <svg xmlns="http://www.w3.org/2000/svg" className="meta-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                </svg>
+                <span>Category: {quiz.category}</span>
+              </div>
+            </div>
+
+            {/* Additional quiz info could go here */}
+            
+            <div className="quiz-actions">
+              <button 
+                className="start-quiz-button"
+                onClick={handleStartQuiz}
+              >
+                Start Quiz
+              </button>
+              <Link to="/quizzes" className="back-button">
+                Back to List
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default QuizDetailPage;
