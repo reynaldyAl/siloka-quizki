@@ -405,6 +405,29 @@ const quizService = {
     }
   },
   
+  // Add new createQuiz method using direct API call
+  createQuiz: async (quizData) => {
+    try {
+      console.log("Creating quiz with data:", quizData);
+      
+      // Use the same direct approach that works for questions
+      const response = await api.post('/quizzes', quizData);
+      
+      console.log("Quiz created successfully:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Error creating quiz:", error.response?.data || error.message);
+      
+      if (error.response?.status === 401) {
+        throw new Error("Authentication failed. Please log in again.");
+      } else if (error.response?.status === 403) {
+        throw new Error("You don't have permission to create quizzes.");
+      }
+      
+      throw error;
+    }
+  },
+  
   // Mock submission for testing when the real API fails
   mockSubmitAnswer: async (questionId, choiceId) => {
     console.log("Using mock answer submission");

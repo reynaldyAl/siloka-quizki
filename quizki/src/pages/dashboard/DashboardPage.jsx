@@ -1,11 +1,9 @@
-// pages/dashboard/DashboardPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import AdminDashboard from './AdminDashboard';
 import UserDashboard from './UserDashboard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-
 
 const DashboardPage = () => {
   const [user, setUser] = useState(null);
@@ -15,42 +13,72 @@ const DashboardPage = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      // Check if token exists
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      // Try to get all data but handle individual request failures
+      let userData = null;
+      let answersData = [];
+      let questionsData = [];
+      
       try {
-        // Check if token exists
-        const token = localStorage.getItem('token');
-        if (!token) {
+        const userResponse = await api.get('/me');
+        userData = userResponse.data;
+        setUser(userData);
+      } catch (userErr) {
+        console.error("Failed to fetch user data:", userErr);
+        if (userErr.response?.status === 401) {
           navigate('/login');
           return;
         }
-
-        // Get current user data
-        const userResponse = await api.get('/me');
-        setUser(userResponse.data);
-
-        // Get user's answers
-        const answersResponse = await api.get('/my-answers');
-        setUserAnswers(answersResponse.data);
-
-        // Get available questions
-        const questionsResponse = await api.get('/questions');
-        setQuestions(questionsResponse.data);
-
-      } catch (err) {
-        console.error('Error loading dashboard data:', err);
-        if (err.response?.status === 401) {
-          navigate('/login');
-        } else {
-          setError('Failed to load dashboard data. Please try again later.');
-        }
-      } finally {
-        setLoading(false);
       }
-    };
+      
+      try {
+        const answersResponse = await api.get('/my-answers');
+        answersData = answersResponse.data || [];
+        setUserAnswers(answersData);
+      } catch (answersErr) {
+        console.error("Failed to fetch answers:", answersErr);
+      }
+      
+      try {
+        const questionsResponse = await api.get('/questions');
+        questionsData = questionsResponse.data || [];
+        setQuestions(questionsData);
+      } catch (questionsErr) {
+        console.error("Failed to fetch questions:", questionsErr);
+      }
+      
+      // If we couldn't get user data but got past the 401 check,
+      // something is wrong with the backend
+      if (!userData) {
+        setError('Failed to load user data. Please try again.');
+      }
+      
+    } catch (err) {
+      console.error('Error loading dashboard data:', err);
+      if (err.response?.status === 401) {
+        navigate('/login');
+      } else {
+        setError('Failed to load dashboard data. Please try again later.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchDashboardData();
-  }, [navigate]);
+  }, []);
 
   if (loading) {
     return (
@@ -67,7 +95,7 @@ const DashboardPage = () => {
           <h2 className="text-xl font-bold mb-2">Error</h2>
           <p>{error}</p>
           <button 
-            onClick={() => window.location.reload()} 
+            onClick={fetchDashboardData} 
             className="mt-4 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded"
           >
             Retry
@@ -77,22 +105,41 @@ const DashboardPage = () => {
     );
   }
 
-  // Calculate statistics
+  if (!user) {
+    return (
+      <div className="dashboard-container p-4">
+        <div className="bg-orange-900 bg-opacity-20 border border-orange-500 text-orange-100 p-4 rounded">
+          <h2 className="text-xl font-bold mb-2">Session Error</h2>
+          <p>Unable to load your user profile. Please try logging in again.</p>
+          <button 
+            onClick={() => navigate('/login')} 
+            className="mt-4 bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded"
+          >
+            Log In
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate statistics safely
   const totalQuizzesTaken = new Set(userAnswers.map(answer => answer.question_id)).size;
   
-  const correctAnswers = userAnswers.filter(answer => answer.is_correct).length;
+  // Safely check for is_correct property which might not exist
+  const correctAnswers = userAnswers.filter(answer => answer?.score > 0).length;
   const averageScore = userAnswers.length > 0 
     ? Math.round((correctAnswers / userAnswers.length) * 100) 
     : 0;
 
   // Render different dashboard based on user role
-  return user?.role === 'admin' ? (
+  return user.role === 'admin' ? (
     <AdminDashboard 
       user={user}
       questions={questions}
       userAnswers={userAnswers}
       totalQuizzesTaken={totalQuizzesTaken}
       averageScore={averageScore}
+      onRefresh={fetchDashboardData}
     />
   ) : (
     <UserDashboard 
@@ -101,6 +148,7 @@ const DashboardPage = () => {
       userAnswers={userAnswers}
       totalQuizzesTaken={totalQuizzesTaken}
       averageScore={averageScore}
+      onRefresh={fetchDashboardData}
     />
   );
 };
