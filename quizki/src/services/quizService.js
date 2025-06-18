@@ -321,10 +321,33 @@ const quizService = {
     }
   },
   
-  // New method to get transformed quizzes
+  // Updated method to get quizzes from API first
   getQuizzes: async () => {
     try {
-      console.log("Fetching and transforming quizzes");
+      console.log("Fetching quizzes from API");
+      // Try to fetch quizzes directly from API first
+      const response = await api.get('/quizzes');
+      
+      // Check if we got data back
+      if (response.data && response.data.length > 0) {
+        console.log("Quizzes received from API:", response.data);
+        
+        // Process the quizzes to ensure they have the expected format
+        const processedQuizzes = response.data.map(quiz => ({
+          ...quiz,
+          // Ensure we have questionCount if not provided
+          questionCount: quiz.questionCount || (quiz.questions?.length || 0),
+          // Ensure we have difficulty if not provided
+          difficulty: quiz.difficulty || 'Medium',
+          // Ensure we have timeLimit if not provided
+          timeLimit: quiz.timeLimit || calculateEstimatedTime(quiz.questions?.length || 0)
+        }));
+        
+        return processedQuizzes;
+      }
+      
+      // Fallback: If no quizzes from API, create them from questions as before
+      console.log("No quizzes from API, transforming from questions");
       const questions = await quizService.getAllQuestions();
       const questionGroups = groupQuestionsByCategory(questions);
       
@@ -345,7 +368,7 @@ const quizService = {
       console.log("Transformed quizzes:", quizzes);
       return quizzes;
     } catch (error) {
-      console.error("Error transforming questions to quizzes:", error);
+      console.error("Error fetching quizzes:", error);
       
       // In development mode, return mock quizzes based on mock questions
       if (process.env.NODE_ENV === 'development') {
@@ -373,12 +396,32 @@ const quizService = {
     }
   },
   
-  // Get a specific quiz by ID
+  // Updated method to get a specific quiz by ID from API first
   getQuizById: async (quizId) => {
     try {
       console.log("Fetching quiz with ID:", quizId);
       
-      // First get all quizzes
+      // Try to fetch directly from API first
+      try {
+        const response = await api.get(`/quizzes/${quizId}`);
+        if (response.data) {
+          console.log("Quiz found in API:", response.data);
+          
+          // Ensure we have question details
+          const questionIds = response.data.questions || [];
+          const questionPromises = questionIds.map(qid => quizService.getQuestionById(qid));
+          const questionDetails = await Promise.all(questionPromises);
+          
+          return {
+            ...response.data,
+            questionDetails
+          };
+        }
+      } catch (apiError) {
+        console.log("Could not find quiz in API, falling back to transformed quizzes");
+      }
+      
+      // Fallback to transformed quizzes
       const allQuizzes = await quizService.getQuizzes();
       const quiz = allQuizzes.find(q => String(q.id) === String(quizId));
       
@@ -449,5 +492,38 @@ const quizService = {
     };
   }
 };
+
+// Add to quizService.js
+updateQuiz: async (quizId, quizData) => {
+  try {
+    console.log("Updating quiz with ID:", quizId, "Data:", quizData);
+    
+    // First try using the API directly
+    const response = await api.put(`/quizzes/${quizId}`, {
+      title: quizData.title,
+      description: quizData.description,
+      category: quizData.category,
+      difficulty: quizData.difficulty,
+      time_limit: quizData.timeLimit, // Note: API might use time_limit instead of timeLimit
+      questions: quizData.questions
+    });
+    
+    console.log("Quiz updated successfully:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Error updating quiz:", error.response?.data || error.message);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Development mode: Simulating successful quiz update");
+      return {
+        id: quizId,
+        ...quizData,
+        updated: true
+      };
+    }
+    
+    throw error;
+  }
+}
 
 export default quizService;
