@@ -135,3 +135,21 @@ class TokenData(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
+
+# NEW: QuizScore Schemas
+class QuizScoreBase(BaseModel):
+    quiz_id: int
+    score: float
+    total_questions: int
+    correct_answers: int
+
+class QuizScoreCreate(QuizScoreBase):
+    pass
+
+class QuizScoreResponse(QuizScoreBase):
+    id: int
+    user_id: int
+    completed_at: datetime
+    
+    class Config:
+        from_attributes = True

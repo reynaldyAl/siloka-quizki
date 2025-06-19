@@ -28,7 +28,7 @@ const TakeQuizPage = () => {
         setIsResetting(true);
         console.log("Starting fresh quiz with ID:", quizId);
         
-        // NEW: Use startFreshQuiz to reset previous answers
+        // NEW: Use startFreshQuiz to reset previous answers AND quiz score
         const freshQuizResult = await quizService.startFreshQuiz(quizId);
         console.log("Fresh quiz result:", freshQuizResult);
         
@@ -81,8 +81,8 @@ const TakeQuizPage = () => {
         setStartTime(new Date());
         
         // Show success message about reset
-        if (freshQuizResult.resetResult.resetCount > 0) {
-          console.log(`✅ Reset ${freshQuizResult.resetResult.resetCount} previous answers - starting fresh!`);
+        if (freshQuizResult.resetResult.resetCount > 0 || freshQuizResult.scoreResetResult.success) {
+          console.log(`✅ Reset ${freshQuizResult.resetResult.resetCount} answers and quiz score - starting fresh!`);
         } else {
           console.log("✅ Starting fresh quiz session!");
         }
@@ -150,31 +150,62 @@ const TakeQuizPage = () => {
       const timeSpent = `${String(timeSpentMinutes).padStart(2, '0')}:${String(timeSpentSeconds).padStart(2, '0')}`;
       
       const submittedAnswers = [];
-      const totalAnswers = Object.keys(userAnswers).length;
-      let completedAnswers = 0;
+      let totalScore = 0;
+      let correctCount = 0;
+      const totalQuestions = Object.keys(userAnswers).length;
       
+      console.log(`🎯 SUBMITTING QUIZ: ${totalQuestions} answers to submit`);
+      
+      // Submit individual answers first
       for (const [questionId, choiceId] of Object.entries(userAnswers)) {
+        if (!questionId || !choiceId) continue;
+        
         try {
-          console.log(`Submitting answer - Question: ${questionId}, Choice: ${choiceId}`);
+          console.log(`📝 Submitting answer: Q${questionId} -> Choice${choiceId}`);
           const response = await quizService.submitAnswer(
             Number(questionId),
             Number(choiceId)
           );
-          console.log("Answer submission response:", response);
+          
           submittedAnswers.push(response);
+          totalScore += response.score || 0;
+          if (response.is_correct) correctCount++;
+          
+          console.log(`✅ Answer submitted: score=${response.score}, correct=${response.is_correct}`);
+          
         } catch (err) {
-          console.error(`Error submitting answer for question ${questionId}:`, err);
+          console.error(`❌ Error submitting answer for question ${questionId}:`, err);
           // Continue with other answers even if one fails
         }
         
-        completedAnswers++;
-        setSubmitProgress(Math.round((completedAnswers / totalAnswers) * 100));
+        // Update progress
+        const completedAnswers = submittedAnswers.length;
+        setSubmitProgress(Math.round((completedAnswers / totalQuestions) * 50)); // 50% for individual answers
       }
       
-      console.log("Waiting for answers to be saved...");
+      console.log(`📊 QUIZ SUMMARY: Total Score=${totalScore}, Correct=${correctCount}/${totalQuestions}`);
+      
+      // NEW: Submit quiz completion score to QuizScore table
+      try {
+        console.log(`📊 Submitting quiz score to database...`);
+        const quizScoreResponse = await quizService.submitQuizScore(
+          quiz.id,
+          totalScore,
+          totalQuestions,
+          correctCount
+        );
+        console.log("✅ Quiz score submitted successfully:", quizScoreResponse);
+        setSubmitProgress(100); // 100% after quiz score is submitted
+      } catch (scoreError) {
+        console.error("⚠️ Failed to submit quiz score:", scoreError);
+        // Continue anyway - individual answers are still saved
+        setSubmitProgress(75);
+      }
+      
+      console.log("Waiting for answers to be processed...");
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      console.log("Fetching submitted answers");
+      console.log("Fetching submitted answers for verification");
       const answeredQuestions = await quizService.getUserAnswers();
       console.log("User answers from API:", answeredQuestions);
       
@@ -183,7 +214,9 @@ const TakeQuizPage = () => {
         questions, 
         userAnswers, 
         timeSpent,
-        quiz
+        quiz,
+        totalScore,
+        correctCount
       );
       
       console.log("Final quiz results:", results);
@@ -195,17 +228,19 @@ const TakeQuizPage = () => {
         }
       });
     } catch (err) {
-      console.error('Error submitting quiz:', err);
+      console.error('💥 Error submitting quiz:', err);
       setError('Failed to submit quiz. Please try again.');
       setIsSubmitting(false);
     }
   };
 
-  const processResults = (answeredQuestions, questions, userAnswers, timeSpent, quiz) => {
+  const processResults = (answeredQuestions, questions, userAnswers, timeSpent, quiz, totalScore, correctCount) => {
     console.log("Processing results with data:", {
       answeredQuestionsCount: answeredQuestions.length,
       questionsCount: questions.length,
-      userAnswersCount: Object.keys(userAnswers).length
+      userAnswersCount: Object.keys(userAnswers).length,
+      totalScore,
+      correctCount
     });
 
     const quizQuestionIds = questions.map(q => Number(q.id));
@@ -215,14 +250,18 @@ const TakeQuizPage = () => {
     
     console.log("Relevant answers for this quiz:", relevantAnswers);
     
-    const correctAnswers = relevantAnswers.filter(answer => answer.is_correct === true);
-    console.log("Correct answers:", correctAnswers);
+    // Use the calculated values from submission instead of recalculating
+    const finalCorrectCount = correctCount || relevantAnswers.filter(answer => answer.is_correct === true).length;
+    const finalTotalScore = totalScore || relevantAnswers.reduce((sum, answer) => sum + (answer.score || 0), 0);
+    
+    console.log("Final calculations:", { finalCorrectCount, finalTotalScore });
     
     return {
       quizId,
       quizTitle: quiz?.title || "Quiz",
-      score: correctAnswers.length,
+      score: finalCorrectCount,
       totalQuestions: questions.length,
+      totalScore: finalTotalScore,
       timeSpent,
       passingScore: Math.ceil(questions.length * 0.6),
       dateTaken: new Date().toISOString(),
@@ -278,6 +317,31 @@ const TakeQuizPage = () => {
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
+  // Test direct answer submission function for debugging
+  const testDirectSubmission = async () => {
+    console.log("🧪 TESTING: Direct answer submission");
+    
+    try {
+      // Use actual IDs from your database
+      const testResult = await quizService.submitAnswer(1, 1); // question 1, choice 1
+      console.log("🧪 TEST RESULT:", testResult);
+      
+      // Check what's in the database immediately after
+      await quizService.debugDatabaseAnswers();
+      
+    } catch (error) {
+      console.error("🧪 TEST FAILED:", error);
+    }
+  };
+
+  // Call test function in development mode
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && questions.length > 0) {
+      // Uncomment this line to test direct submission
+      // testDirectSubmission();
+    }
+  }, [questions]);
+
   if (loading) {
     return (
       <div className="take-quiz-container">
@@ -297,7 +361,7 @@ const TakeQuizPage = () => {
             </p>
             {isResetting && (
               <p style={{ fontSize: '0.9em', opacity: 0.8, marginTop: '10px' }}>
-                Clearing previous answers...
+                Clearing previous answers and scores...
               </p>
             )}
           </div>
@@ -451,7 +515,12 @@ const TakeQuizPage = () => {
                   <div className="orbit"></div>
                   <div className="planet"></div>
                 </div>
-                <p>Submitting your answers... {submitProgress}%</p>
+                <p>
+                  {submitProgress < 50 ? 'Submitting individual answers...' : 
+                   submitProgress < 100 ? 'Recording quiz completion...' : 
+                   'Processing results...'}
+                  {submitProgress}%
+                </p>
               </div>
             </div>
           </div>

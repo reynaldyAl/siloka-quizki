@@ -20,12 +20,13 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password = Column(String, nullable=False)
     total_score = Column(Float, default=0.0)
-    role = Column(String, default="user")  # "user" or "admin"
+    role = Column(String, default="user")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     questions = relationship("Question", back_populates="creator")
     answers = relationship("Answer", back_populates="user")
-    quizzes = relationship("Quiz", back_populates="creator")  # Added relationship
+    quizzes = relationship("Quiz", back_populates="creator")
+    quiz_scores = relationship("QuizScore", back_populates="user")  # NEW
 
 class Question(Base):
     __tablename__ = "questions"
@@ -56,8 +57,8 @@ class Answer(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    question_id = Column(Integer, ForeignKey("questions.id"))
-    choice_id = Column(Integer, ForeignKey("choices.id"))
+    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False)  # Make NOT NULL
+    choice_id = Column(Integer, ForeignKey("choices.id"), nullable=False)      # Make NOT NULL
     score = Column(Float, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -65,7 +66,6 @@ class Answer(Base):
     question = relationship("Question", back_populates="answers")
     choice = relationship("Choice", back_populates="answers")
 
-# New Quiz Models
 class Quiz(Base):
     __tablename__ = "quizzes"
 
@@ -74,18 +74,34 @@ class Quiz(Base):
     description = Column(Text)
     category = Column(String)
     difficulty = Column(String, default="medium")
-    time_limit = Column(Integer, default=15)  # in minutes
+    time_limit = Column(Integer, default=15)
     creator_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
 
     creator = relationship("User", back_populates="quizzes")
     questions = relationship("Question", secondary="quiz_questions")
+    quiz_scores = relationship("QuizScore", back_populates="quiz")  # NEW
 
 class QuizQuestion(Base):
     __tablename__ = "quiz_questions"
 
     quiz_id = Column(Integer, ForeignKey("quizzes.id", ondelete="CASCADE"), primary_key=True)
     question_id = Column(Integer, ForeignKey("questions.id", ondelete="CASCADE"), primary_key=True)
+
+# NEW: Separate table for quiz completion scores
+class QuizScore(Base):
+    __tablename__ = "quiz_scores"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    quiz_id = Column(Integer, ForeignKey("quizzes.id"), nullable=False)
+    score = Column(Float, default=0.0)
+    total_questions = Column(Integer, default=0)
+    correct_answers = Column(Integer, default=0)
+    completed_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User", back_populates="quiz_scores")
+    quiz = relationship("Quiz", back_populates="quiz_scores")
 
 # Create tables
 Base.metadata.create_all(bind=engine)

@@ -9,7 +9,7 @@ import logging
 import schemas
 import crud
 import auth
-from database import get_db, User
+from database import get_db, User, QuizScore
 
 app = FastAPI(title="QuizKi API", description="Quiz Application API", version="1.0.0")
 
@@ -331,6 +331,70 @@ def delete_quiz(
     if db_quiz is None:
         raise HTTPException(status_code=404, detail="Quiz not found")
     return {"message": "Quiz deleted successfully"}
+
+# NEW: QuizScore Endpoints
+@app.post("/quiz-scores", response_model=schemas.QuizScoreResponse)
+def submit_quiz_score(
+    quiz_score: schemas.QuizScoreCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth.get_current_user)
+):
+    """Submit/Update a quiz completion score"""
+    logger.info(f"Quiz score submission: user={current_user.id}, quiz={quiz_score.quiz_id}")
+    
+    result = crud.create_quiz_score(
+        db=db, 
+        user_id=current_user.id,
+        quiz_id=quiz_score.quiz_id,
+        score=quiz_score.score,
+        total_questions=quiz_score.total_questions,
+        correct_answers=quiz_score.correct_answers
+    )
+    
+    if not result:
+        raise HTTPException(status_code=400, detail="Failed to create quiz score")
+    
+    return result
+
+@app.get("/my-quiz-scores", response_model=List[schemas.QuizScoreResponse])
+def get_my_quiz_scores(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth.get_current_user)
+):
+    """Get all quiz scores for the current user"""
+    return crud.get_user_quiz_scores(db, user_id=current_user.id)
+
+@app.get("/quiz-scores/{quiz_id}", response_model=List[schemas.QuizScoreResponse])
+def get_quiz_leaderboard(
+    quiz_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get leaderboard for a specific quiz"""
+    return crud.get_quiz_scores(db, quiz_id=quiz_id)
+
+@app.get("/my-quiz-score/{quiz_id}", response_model=schemas.QuizScoreResponse)
+def get_my_quiz_score(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth.get_current_user)
+):
+    """Get user's score for a specific quiz"""
+    score = crud.get_user_quiz_score(db, user_id=current_user.id, quiz_id=quiz_id)
+    if not score:
+        raise HTTPException(status_code=404, detail="Quiz score not found")
+    return score
+
+@app.delete("/my-quiz-score/{quiz_id}")
+def reset_my_quiz_score(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth.get_current_user)
+):
+    """Reset user's quiz score (for complete retake)"""
+    result = crud.delete_quiz_score(db, user_id=current_user.id, quiz_id=quiz_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Quiz score not found")
+    return {"message": f"Quiz score for quiz {quiz_id} has been reset"}
 
 # OPTIONS endpoints
 @app.options("/quizzes", include_in_schema=False)
