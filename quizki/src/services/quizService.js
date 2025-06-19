@@ -1,4 +1,7 @@
 import api from './api';
+//  ini adalah versi better dari yang sebelumnya
+//  update : Dapat membaca Jawaban 1st try 
+// Need upgrade : Data saat re-take saat menjalankan local host dan db untuk kedua kali belum bisa (saat relogin)
 
 // Add a cache for correct answers
 const correctAnswersCache = {};
