@@ -1,3 +1,5 @@
+// pages/LeaderboardPage.jsx with position fix
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -42,20 +44,46 @@ const LeaderboardPage = () => {
         setLoading(true);
         setError(null);
         
-        // Get all users (sorted by score)
-        const usersResponse = await api.get('/users');
-        setUsers(usersResponse.data);
-        
-        // Try to get current user info (but don't redirect if not logged in)
+        // Try to get current user info first
+        let userData = null;
         try {
           const currentUserResponse = await api.get('/me');
-          setCurrentUser(currentUserResponse.data);
+          console.log("Current user data:", currentUserResponse.data);
+          userData = currentUserResponse.data;
+          setCurrentUser(userData);
         } catch (userError) {
           // If 401, user not logged in - that's okay for leaderboard
           if (userError.response?.status !== 401) {
             console.error('Error getting current user:', userError);
           }
         }
+        
+        // Get all users (sorted by score)
+        const usersResponse = await api.get('/users');
+        console.log("Fetched users data:", usersResponse.data);
+        
+        // If we have current user data but they're not in the leaderboard, add them
+        let usersData = [...usersResponse.data];
+        
+        if (userData) {
+          // Check if user exists in the leaderboard
+          const userExists = usersData.some(u => String(u.id) === String(userData.id));
+          console.log("User exists in leaderboard:", userExists);
+          
+          // If user doesn't exist in the leaderboard, add them
+          if (!userExists) {
+            console.log("Adding current user to leaderboard data");
+            usersData.push({
+              ...userData,
+              total_score: userData.total_score || 0
+            });
+            
+            // Resort the leaderboard data by score
+            usersData.sort((a, b) => (b.total_score || 0) - (a.total_score || 0));
+          }
+        }
+        
+        setUsers(usersData);
         
       } catch (err) {
         console.error('Error loading leaderboard data:', err);
@@ -68,22 +96,52 @@ const LeaderboardPage = () => {
     fetchData();
   }, [timeFilter]); // Re-fetch when time filter changes
 
-  // Find current user's rank in the leaderboard
+  // Find current user's rank in the leaderboard - FIXED to ensure a position
   const getCurrentUserRank = () => {
-    if (!currentUser || !users.length) return null;
+    if (!currentUser || !users.length) {
+      console.log("Cannot determine rank: currentUser or users list is empty");
+      return null;
+    }
     
-    const userIndex = users.findIndex(user => user.id === currentUser.id);
-    return userIndex !== -1 ? userIndex + 1 : null;
+    // Convert IDs to strings for comparison to avoid type mismatch issues
+    const currentUserId = String(currentUser.id);
+    
+    // Log all user IDs to help diagnose the problem
+    console.log("Current user ID:", currentUserId);
+    console.log("Available user IDs:", users.map(u => String(u.id)));
+    
+    const userIndex = users.findIndex(user => String(user.id) === currentUserId);
+    console.log("Found user index:", userIndex);
+    
+    if (userIndex !== -1) {
+      return userIndex + 1;
+    } else {
+      // If not found in the leaderboard, calculate position based on score
+      // This ensures we always show a position
+      let position = 1;
+      const userScore = currentUser.total_score || 0;
+      
+      // Count how many users have higher scores
+      for (const user of users) {
+        if ((user.total_score || 0) > userScore) {
+          position++;
+        }
+      }
+      
+      console.log("Calculated position based on score:", position);
+      return position;
+    }
   };
 
   const currentUserRank = getCurrentUserRank();
+  console.log("Calculated current user rank:", currentUserRank);
   
   // Calculate stats
   const getStats = () => {
     if (!users.length) return {};
     
     const topScore = users[0]?.total_score || 0;
-    const avgScore = users.reduce((sum, user) => sum + user.total_score, 0) / users.length;
+    const avgScore = users.reduce((sum, user) => sum + (user.total_score || 0), 0) / users.length;
     
     return {
       totalUsers: users.length,
@@ -95,7 +153,7 @@ const LeaderboardPage = () => {
   const stats = getStats();
   
   // Helper function to determine badge for score
-  const getBadgeForScore = (score) => {
+  const getBadgeForScore = (score = 0) => {
     if (score >= 1000) return { name: "Cosmos Master", class: "badge-cosmic" };
     if (score >= 500) return { name: "Galaxy Explorer", class: "badge-galaxy" };
     if (score >= 300) return { name: "Star Navigator", class: "badge-star" };
@@ -221,10 +279,10 @@ const LeaderboardPage = () => {
                 <div className="podium-place second-place">
                   <div className="medal silver">2</div>
                   <div className="user-avatar" style={{ backgroundImage: `linear-gradient(135deg, #d1d1d1, #f2f2f2)` }}>
-                    {users[1].username.charAt(0).toUpperCase()}
+                    {users[1].username?.charAt(0).toUpperCase() || '?'}
                   </div>
-                  <div className="username">{users[1].username}</div>
-                  <div className="score">{users[1].total_score}</div>
+                  <div className="username">{users[1].username || 'User'}</div>
+                  <div className="score">{users[1].total_score || 0}</div>
                   <div className="podium-block"></div>
                 </div>
                 
@@ -237,10 +295,10 @@ const LeaderboardPage = () => {
                   </div>
                   <div className="medal gold">1</div>
                   <div className="user-avatar" style={{ backgroundImage: `linear-gradient(135deg, #f4c141, #ffdd78)` }}>
-                    {users[0].username.charAt(0).toUpperCase()}
+                    {users[0].username?.charAt(0).toUpperCase() || '?'}
                   </div>
-                  <div className="username">{users[0].username}</div>
-                  <div className="score">{users[0].total_score}</div>
+                  <div className="username">{users[0].username || 'User'}</div>
+                  <div className="score">{users[0].total_score || 0}</div>
                   <div className="podium-block"></div>
                 </div>
                 
@@ -248,10 +306,10 @@ const LeaderboardPage = () => {
                 <div className="podium-place third-place">
                   <div className="medal bronze">3</div>
                   <div className="user-avatar" style={{ backgroundImage: `linear-gradient(135deg, #b56f50, #e0905a)` }}>
-                    {users[2].username.charAt(0).toUpperCase()}
+                    {users[2].username?.charAt(0).toUpperCase() || '?'}
                   </div>
-                  <div className="username">{users[2].username}</div>
-                  <div className="score">{users[2].total_score}</div>
+                  <div className="username">{users[2].username || 'User'}</div>
+                  <div className="score">{users[2].total_score || 0}</div>
                   <div className="podium-block"></div>
                 </div>
               </div>
@@ -296,19 +354,19 @@ const LeaderboardPage = () => {
             )}
           </div>
           
-          {/* Display user's rank if logged in */}
-          {currentUser && currentUserRank && (
+          {/* Display user's rank if logged in - FIXED to always show a position */}
+          {currentUser && (
             <div className="cosmic-user-card mb-8">
               <div className="cosmic-user-heading">Your Ranking</div>
               <div className="cosmic-user-content">
                 <div className="flex flex-col md:flex-row justify-between items-center w-full">
                   <div className="flex items-center">
                     <div className="cosmic-avatar your-avatar">
-                      {currentUser.username.charAt(0).toUpperCase()}
+                      {currentUser.username?.charAt(0).toUpperCase() || '?'}
                       <div className="cosmic-avatar-glow"></div>
                     </div>
                     <div className="ml-4">
-                      <div className="text-xl font-bold text-white">{currentUser.username}</div>
+                      <div className="text-xl font-bold text-white">{currentUser.username || 'You'}</div>
                       <div className="badge-container">
                         <span className={`badge ${getBadgeForScore(currentUser.total_score).class}`}>
                           {getBadgeForScore(currentUser.total_score).name}
@@ -320,11 +378,11 @@ const LeaderboardPage = () => {
                   <div className="flex space-x-8 mt-4 md:mt-0">
                     <div className="stat">
                       <div className="text-lg text-blue-300">Position</div>
-                      <div className="text-3xl font-bold">{currentUserRank}</div>
+                      <div className="text-3xl font-bold">{currentUserRank || 'N/A'}</div>
                     </div>
                     <div className="stat">
                       <div className="text-lg text-blue-300">Score</div>
-                      <div className="text-3xl font-bold">{currentUser.total_score}</div>
+                      <div className="text-3xl font-bold">{currentUser.total_score || 0}</div>
                     </div>
                   </div>
                 </div>
@@ -373,12 +431,14 @@ const LeaderboardPage = () => {
                 <tbody className="divide-y divide-blue-900/30">
                   {users.map((user, index) => {
                     const badge = getBadgeForScore(user.total_score);
+                    const isCurrentUser = currentUser && String(user.id) === String(currentUser.id);
+                    
                     return (
                       <tr 
                         key={user.id} 
                         className={`
                           cosmic-table-row
-                          ${currentUser && user.id === currentUser.id ? 'cosmic-table-row-highlight' : ''}
+                          ${isCurrentUser ? 'cosmic-table-row-highlight' : ''}
                           ${index < 10 ? 'top-ten' : ''}
                         `}
                       >
@@ -415,12 +475,12 @@ const LeaderboardPage = () => {
                         <td className="cosmic-td">
                           <div className="flex items-center">
                             <div className={`cosmic-avatar ${index < 3 ? `top-${index+1}` : ''}`}>
-                              {user.username.charAt(0).toUpperCase()}
+                              {user.username?.charAt(0).toUpperCase() || '?'}
                               <div className="cosmic-avatar-glow"></div>
                             </div>
                             <div className="ml-3">
-                              <div className="text-sm font-medium text-white">{user.username}</div>
-                              {currentUser && user.id === currentUser.id && (
+                              <div className="text-sm font-medium text-white">{user.username || 'User'}</div>
+                              {isCurrentUser && (
                                 <span className="text-xs text-blue-400">(You)</span>
                               )}
                             </div>
@@ -433,7 +493,7 @@ const LeaderboardPage = () => {
                         </td>
                         <td className="cosmic-td text-right">
                           <div className="score-display">
-                            <span className="score-value">{user.total_score}</span>
+                            <span className="score-value">{user.total_score || 0}</span>
                             {index < 10 && <span className="score-sparkle"></span>}
                           </div>
                         </td>

@@ -3,6 +3,9 @@ from sqlalchemy import desc
 from database import User, Question, Choice, Answer, Quiz, QuizQuestion
 from auth import get_password_hash
 import schemas
+import logging
+
+logger = logging.getLogger(__name__)
 
 def get_user(db: Session, user_id: int):
     return db.query(User).filter(User.id == user_id).first()
@@ -90,25 +93,54 @@ def delete_question(db: Session, question_id: int):
 def get_choice(db: Session, choice_id: int):
     return db.query(Choice).filter(Choice.id == choice_id).first()
 
-def create_answer(db: Session, answer: schemas.AnswerCreate, user_id: int):
-    # Check if user already answered this question
-    existing_answer = db.query(Answer).filter(
+# Enhanced answer functions for re-take functionality
+def get_user_answer_for_question(db: Session, user_id: int, question_id: int):
+    """Get user's existing answer for a specific question"""
+    return db.query(Answer).filter(
         Answer.user_id == user_id,
-        Answer.question_id == answer.question_id
+        Answer.question_id == question_id
     ).first()
-    
+
+def delete_user_answer(db: Session, user_id: int, question_id: int):
+    """Delete user's answer for a specific question (for re-take functionality)"""
+    existing_answer = get_user_answer_for_question(db, user_id, question_id)
     if existing_answer:
-        return None  # User already answered this question
+        # Also subtract score from user's total
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            user.total_score = max(0, user.total_score - existing_answer.score)
+            logger.info(f"Deducted {existing_answer.score} points from user {user_id}, new total: {user.total_score}")
+        
+        db.delete(existing_answer)
+        db.commit()
+        return True
+    return False
+
+def create_answer(db: Session, answer: schemas.AnswerCreate, user_id: int):
+    logger.info(f"Creating answer: user_id={user_id}, question_id={answer.question_id}, choice_id={answer.choice_id}")
+    
+    # Double-check if user already answered this question
+    existing_answer = get_user_answer_for_question(db, user_id, answer.question_id)
+    if existing_answer:
+        logger.info(f"User {user_id} already answered question {answer.question_id}")
+        return None
     
     # Get the choice and question
     choice = db.query(Choice).filter(Choice.id == answer.choice_id).first()
     question = db.query(Question).filter(Question.id == answer.question_id).first()
     
     if not choice or not question:
+        logger.error(f"Choice or question not found: choice={choice}, question={question}")
+        return None
+    
+    # Verify choice belongs to question
+    if choice.question_id != answer.question_id:
+        logger.error(f"Choice {choice.id} does not belong to question {answer.question_id}")
         return None
     
     # Calculate score
     score = question.score if choice.is_correct else 0.0
+    logger.info(f"Calculated score: {score} (is_correct: {choice.is_correct})")
     
     # Create answer
     db_answer = Answer(
@@ -121,36 +153,55 @@ def create_answer(db: Session, answer: schemas.AnswerCreate, user_id: int):
     
     # Update user's total score
     user = db.query(User).filter(User.id == user_id).first()
-    user.total_score += score
+    if user:
+        user.total_score += score
+        logger.info(f"Updated user total score to: {user.total_score}")
     
-    db.commit()
-    db.refresh(db_answer)
-    return db_answer
+    try:
+        db.commit()
+        db.refresh(db_answer)
+        
+        # Add is_correct field for response
+        db_answer.is_correct = choice.is_correct
+        
+        logger.info(f"Answer created successfully: {db_answer.id}")
+        return db_answer
+    except Exception as e:
+        logger.error(f"Error creating answer: {e}")
+        db.rollback()
+        return None
 
 def get_user_answers(db: Session, user_id: int):
-    # Get all answers for the user
+    logger.info(f"Getting answers for user {user_id}")
+    
+    # Get all answers for the user with joins
     answers = db.query(Answer).filter(Answer.user_id == user_id).all()
     
-    # Transform to dictionaries with validated fields
+    # Transform to response format
     result = []
     for answer in answers:
-        # Skip any answers with NULL values in required fields
         if answer.question_id is None or answer.choice_id is None:
             continue
-            
+        
+        # Get choice to determine is_correct
+        choice = db.query(Choice).filter(Choice.id == answer.choice_id).first()
+        is_correct = choice.is_correct if choice else False
+        
         answer_dict = {
             "id": answer.id,
             "user_id": answer.user_id,
             "question_id": answer.question_id,
             "choice_id": answer.choice_id,
             "score": answer.score,
+            "is_correct": is_correct,
             "created_at": answer.created_at
         }
         result.append(answer_dict)
     
+    logger.info(f"Found {len(result)} answers for user {user_id}")
     return result
 
-# Quiz CRUD Operations - Updated to fix validation errors
+# Quiz CRUD Operations with proper serialization
 def get_quiz(db: Session, quiz_id: int):
     quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:
@@ -224,12 +275,12 @@ def create_quiz(db: Session, quiz: schemas.QuizCreate, creator_id: int):
         "id": db_quiz.id,
         "title": db_quiz.title,
         "description": db_quiz.description,
-        "category": quiz.category,  # Use input category in case db_quiz.category is None
+        "category": quiz.category,
         "difficulty": db_quiz.difficulty,
         "time_limit": db_quiz.time_limit,
         "creator_id": db_quiz.creator_id,
         "created_at": db_quiz.created_at,
-        "questions": [int(qid) for qid in quiz.questions]  # Ensure all IDs are integers
+        "questions": [int(qid) for qid in quiz.questions]
     }
     
     return quiz_dict
@@ -237,7 +288,6 @@ def create_quiz(db: Session, quiz: schemas.QuizCreate, creator_id: int):
 def update_quiz(db: Session, quiz_id: int, quiz: schemas.QuizUpdate):
     db_quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
     if db_quiz:
-        # Update quiz attributes
         db_quiz.title = quiz.title
         db_quiz.description = quiz.description
         db_quiz.category = quiz.category
@@ -265,7 +315,7 @@ def update_quiz(db: Session, quiz_id: int, quiz: schemas.QuizUpdate):
             "time_limit": db_quiz.time_limit,
             "creator_id": db_quiz.creator_id,
             "created_at": db_quiz.created_at,
-            "questions": [int(qid) for qid in quiz.questions]  # Ensure all IDs are integers
+            "questions": [int(qid) for qid in quiz.questions]
         }
         
         return quiz_dict
@@ -279,6 +329,7 @@ def delete_quiz(db: Session, quiz_id: int):
     return db_quiz
 
 def get_quiz_with_questions(db: Session, quiz_id: int):
+    """Get quiz with properly serialized questions"""
     # Get the quiz
     db_quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not db_quiz:
@@ -288,12 +339,27 @@ def get_quiz_with_questions(db: Session, quiz_id: int):
     quiz_questions = db.query(QuizQuestion).filter(QuizQuestion.quiz_id == quiz_id).all()
     question_ids = [qq.question_id for qq in quiz_questions]
     
-    # Get the actual questions
+    # Get the actual questions and manually serialize them
     questions = []
     for q_id in question_ids:
         question = db.query(Question).filter(Question.id == q_id).first()
         if question:
-            questions.append(question)
+            # Manually serialize question to avoid Pydantic issues
+            question_dict = {
+                "id": question.id,
+                "question_text": question.question_text,
+                "score": question.score,
+                "creator_id": question.creator_id,
+                "created_at": question.created_at,
+                "choices": [
+                    {
+                        "id": choice.id,
+                        "choice_text": choice.choice_text,
+                        "is_correct": choice.is_correct
+                    } for choice in question.choices
+                ]
+            }
+            questions.append(question_dict)
     
     # Create the response object with all necessary data
     quiz_dict = {
@@ -305,7 +371,13 @@ def get_quiz_with_questions(db: Session, quiz_id: int):
         "time_limit": db_quiz.time_limit,
         "creator_id": db_quiz.creator_id,
         "created_at": db_quiz.created_at,
-        "questions": questions  # Using full question objects as expected by QuizDetailResponse
+        "questions": questions  # Using properly serialized question dicts
     }
     
     return quiz_dict
+
+# NEW: Helper function to get quiz question IDs
+def get_quiz_question_ids(db: Session, quiz_id: int):
+    """Get all question IDs for a specific quiz"""
+    quiz_questions = db.query(QuizQuestion).filter(QuizQuestion.quiz_id == quiz_id).all()
+    return [qq.question_id for qq in quiz_questions]

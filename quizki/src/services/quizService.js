@@ -1,4 +1,3 @@
-// services/quizService.js
 import api from './api';
 
 // Add a cache for correct answers
@@ -180,20 +179,26 @@ const quizService = {
     }
   },
 
-  getQuestionById: async (id) => {
+  getQuestionById: async (questionId) => {
     try {
-      console.log("Fetching question with ID:", id);
+      // Ensure questionId is a valid number
+      const id = parseInt(questionId, 10);
+      if (isNaN(id)) {
+        throw new Error(`Invalid question ID: ${questionId}`);
+      }
+      
+      console.log(`Fetching question with ID: ${id}`);
       const response = await api.get(`/questions/${id}`);
       console.log(`Question ${id} data:`, response.data);
       
       // Transform the question to ensure consistent format and cache correct answer
       return transformQuestion(response.data);
     } catch (error) {
-      console.error(`Error fetching question ${id}:`, error.response?.data || error.message);
+      console.error(`Error fetching question ${questionId}:`, error.response?.data || error.message);
       
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Using mock data for question ${id}`);
-        const mockQuestion = mockQuestions.find(q => q.id === Number(id));
+        console.log(`Using mock data for question ${questionId}`);
+        const mockQuestion = mockQuestions.find(q => q.id === Number(questionId));
         if (mockQuestion) {
           return transformQuestion(mockQuestion);
         }
@@ -321,6 +326,155 @@ const quizService = {
     }
   },
   
+  // NEW: Reset all answers for specific questions
+  resetQuizAnswers: async (questionIds) => {
+    try {
+      console.log("Raw questionIds received:", questionIds);
+      
+      // Ensure questionIds is an array and all elements are numbers
+      let validQuestionIds = [];
+      
+      if (Array.isArray(questionIds)) {
+        validQuestionIds = questionIds.map(qId => {
+          // Handle different possible structures
+          let id;
+          if (typeof qId === 'object' && qId !== null) {
+            id = parseInt(qId.id, 10);
+          } else {
+            id = parseInt(qId, 10);
+          }
+          
+          if (isNaN(id)) {
+            console.warn(`Invalid question ID found: ${qId} (type: ${typeof qId})`);
+            return null;
+          }
+          return id;
+        }).filter(id => id !== null);
+      } else {
+        throw new Error('questionIds must be an array');
+      }
+      
+      console.log("Valid question IDs:", validQuestionIds);
+      
+      if (validQuestionIds.length === 0) {
+        return {
+          success: true,
+          totalQuestions: 0,
+          resetCount: 0,
+          results: [],
+          message: 'No valid question IDs to reset'
+        };
+      }
+      
+      const resetPromises = validQuestionIds.map(async (questionId) => {
+        try {
+          console.log(`Resetting answer for question ${questionId}`);
+          const response = await api.delete(`/my-answers/${questionId}`);
+          console.log(`Reset answer for question ${questionId}:`, response.data);
+          return { questionId, success: true };
+        } catch (error) {
+          // 404 means no answer exists, which is fine
+          if (error.response?.status === 404) {
+            console.log(`No existing answer for question ${questionId} - OK`);
+            return { questionId, success: true, message: 'No existing answer' };
+          }
+          console.error(`Failed to reset answer for question ${questionId}:`, error);
+          return { questionId, success: false, error: error.message };
+        }
+      });
+      
+      const results = await Promise.all(resetPromises);
+      console.log("Reset results:", results);
+      
+      const successCount = results.filter(r => r.success).length;
+      console.log(`Successfully reset ${successCount}/${validQuestionIds.length} questions`);
+      
+      return {
+        success: true,
+        totalQuestions: validQuestionIds.length,
+        resetCount: successCount,
+        results
+      };
+    } catch (error) {
+      console.error("Error resetting quiz answers:", error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+
+  // NEW: Start fresh quiz (reset + prepare)
+  startFreshQuiz: async (quizId) => {
+    try {
+      // Ensure quizId is a number
+      const id = parseInt(quizId, 10);
+      if (isNaN(id)) {
+        throw new Error(`Invalid quiz ID: ${quizId}`);
+      }
+      
+      console.log(`Starting fresh quiz ${id}`);
+      
+      // Get quiz details
+      const quiz = await quizService.getQuizById(id);
+      if (!quiz) {
+        throw new Error('Quiz not found');
+      }
+      
+      console.log("Quiz data received:", quiz);
+      
+      // Extract question IDs - handle different possible structures
+      let questionIds = [];
+      
+      if (quiz.questions && Array.isArray(quiz.questions)) {
+        // If quiz.questions is an array of objects or IDs
+        questionIds = quiz.questions.map(q => {
+          if (typeof q === 'object' && q !== null) {
+            return parseInt(q.id, 10);
+          } else {
+            return parseInt(q, 10);
+          }
+        }).filter(id => !isNaN(id));
+      } else if (quiz.questionDetails && Array.isArray(quiz.questionDetails)) {
+        // If question details are provided
+        questionIds = quiz.questionDetails.map(q => parseInt(q.id, 10)).filter(id => !isNaN(id));
+      } else {
+        console.warn("No questions found in quiz:", quiz);
+      }
+      
+      console.log("Extracted question IDs:", questionIds);
+      
+      if (questionIds.length === 0) {
+        console.warn('No valid question IDs found in quiz');
+        return {
+          success: true,
+          quiz,
+          resetResult: {
+            success: true,
+            totalQuestions: 0,
+            resetCount: 0,
+            results: []
+          },
+          message: 'Quiz has no questions to reset'
+        };
+      }
+      
+      // Reset all previous answers for this quiz
+      const resetResult = await quizService.resetQuizAnswers(questionIds);
+      console.log("Quiz reset result:", resetResult);
+      
+      return {
+        success: true,
+        quiz,
+        resetResult,
+        message: `Quiz prepared: ${resetResult.resetCount} previous answers cleared`
+      };
+    } catch (error) {
+      console.error("Error starting fresh quiz:", error);
+      throw error;
+    }
+  },
+  
   // Updated method to get quizzes from API first
   getQuizzes: async () => {
     try {
@@ -340,7 +494,7 @@ const quizService = {
           // Ensure we have difficulty if not provided
           difficulty: quiz.difficulty || 'Medium',
           // Ensure we have timeLimit if not provided
-          timeLimit: quiz.timeLimit || calculateEstimatedTime(quiz.questions?.length || 0)
+          timeLimit: quiz.time_limit || quiz.timeLimit || calculateEstimatedTime(quiz.questions?.length || 0)
         }));
         
         return processedQuizzes;
@@ -399,22 +553,45 @@ const quizService = {
   // Updated method to get a specific quiz by ID from API first
   getQuizById: async (quizId) => {
     try {
-      console.log("Fetching quiz with ID:", quizId);
+      // Ensure quizId is a number
+      const id = parseInt(quizId, 10);
+      if (isNaN(id)) {
+        throw new Error(`Invalid quiz ID: ${quizId}`);
+      }
+      
+      console.log(`Fetching quiz with ID: ${id}`);
       
       // Try to fetch directly from API first
       try {
-        const response = await api.get(`/quizzes/${quizId}`);
+        const response = await api.get(`/quizzes/${id}`);
         if (response.data) {
           console.log("Quiz found in API:", response.data);
           
-          // Ensure we have question details
-          const questionIds = response.data.questions || [];
-          const questionPromises = questionIds.map(qid => quizService.getQuestionById(qid));
-          const questionDetails = await Promise.all(questionPromises);
+          // Handle different possible structures for questions
+          let questionIds = [];
+          if (response.data.questions && Array.isArray(response.data.questions)) {
+            questionIds = response.data.questions.map(q => {
+              if (typeof q === 'object' && q !== null) {
+                return parseInt(q.id, 10);
+              } else {
+                return parseInt(q, 10);
+              }
+            }).filter(qId => !isNaN(qId));
+          }
+          
+          console.log("Question IDs from API quiz:", questionIds);
+          
+          // Fetch question details if we have IDs
+          let questionDetails = [];
+          if (questionIds.length > 0) {
+            const questionPromises = questionIds.map(qid => quizService.getQuestionById(qid));
+            questionDetails = await Promise.all(questionPromises);
+          }
           
           return {
             ...response.data,
-            questionDetails
+            questions: questionIds, // Keep as IDs for compatibility
+            questionDetails // Full question objects
           };
         }
       } catch (apiError) {
@@ -423,7 +600,7 @@ const quizService = {
       
       // Fallback to transformed quizzes
       const allQuizzes = await quizService.getQuizzes();
-      const quiz = allQuizzes.find(q => String(q.id) === String(quizId));
+      const quiz = allQuizzes.find(q => String(q.id) === String(id));
       
       if (!quiz) {
         throw new Error("Quiz not found");
@@ -470,6 +647,42 @@ const quizService = {
       throw error;
     }
   },
+
+  // Update quiz
+  updateQuiz: async (quizId, quizData) => {
+    try {
+      const id = parseInt(quizId, 10);
+      if (isNaN(id)) {
+        throw new Error(`Invalid quiz ID: ${quizId}`);
+      }
+      
+      console.log(`Updating quiz ${id} with data:`, quizData);
+      const response = await api.put(`/quizzes/${id}`, quizData);
+      console.log("Quiz updated successfully:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating quiz:", error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  // Delete quiz
+  deleteQuiz: async (quizId) => {
+    try {
+      const id = parseInt(quizId, 10);
+      if (isNaN(id)) {
+        throw new Error(`Invalid quiz ID: ${quizId}`);
+      }
+      
+      console.log(`Deleting quiz ${id}`);
+      const response = await api.delete(`/quizzes/${id}`);
+      console.log("Quiz deleted successfully:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting quiz:", error.response?.data || error.message);
+      throw error;
+    }
+  },
   
   // Mock submission for testing when the real API fails
   mockSubmitAnswer: async (questionId, choiceId) => {
@@ -492,38 +705,5 @@ const quizService = {
     };
   }
 };
-
-// Add to quizService.js
-updateQuiz: async (quizId, quizData) => {
-  try {
-    console.log("Updating quiz with ID:", quizId, "Data:", quizData);
-    
-    // First try using the API directly
-    const response = await api.put(`/quizzes/${quizId}`, {
-      title: quizData.title,
-      description: quizData.description,
-      category: quizData.category,
-      difficulty: quizData.difficulty,
-      time_limit: quizData.timeLimit, // Note: API might use time_limit instead of timeLimit
-      questions: quizData.questions
-    });
-    
-    console.log("Quiz updated successfully:", response.data);
-    return response.data;
-  } catch (error) {
-    console.error("Error updating quiz:", error.response?.data || error.message);
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log("Development mode: Simulating successful quiz update");
-      return {
-        id: quizId,
-        ...quizData,
-        updated: true
-      };
-    }
-    
-    throw error;
-  }
-}
 
 export default quizService;
