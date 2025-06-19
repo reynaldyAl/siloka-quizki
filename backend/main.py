@@ -2,8 +2,9 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import timedelta
+import logging
 
 import schemas
 import crud
@@ -12,20 +13,27 @@ from database import get_db, User
 
 app = FastAPI(title="QuizKi API", description="Quiz Application API", version="1.0.0")
 
-# Modify your CORS middleware configuration
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    # Explicitly list all allowed origins instead of using "*" when credentials are enabled
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    # Add the following to ensure OPTIONS requests work correctly
     expose_headers=["*"],
-    max_age=600,  # Cache preflight requests for 10 minutes
+    max_age=600,
 )
 
 security = HTTPBearer(auto_error=False)
+
+# Health check endpoint
+@app.get("/health-check")
+async def health_check():
+    return {"status": "healthy", "message": "QuizKi API is running"}
 
 # Auth endpoints
 @app.post("/register", response_model=schemas.UserResponse)
@@ -63,17 +71,15 @@ def get_users(
     db: Session = Depends(get_db),
     credentials = Depends(security)
 ):
-    # Optional authentication
     current_user = None
     if credentials:
         try:
             current_user = auth.get_current_user(credentials, db)
         except HTTPException:
-            pass  # Guest access allowed
+            pass
     
     users = crud.get_users(db, skip=skip, limit=limit)
     
-    # If admin, return full user data; otherwise, return public data only
     if current_user and current_user.role == "admin":
         return users
     else:
@@ -89,7 +95,6 @@ def get_user(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Check if current user can access this user's data
     if current_user.id != user_id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not enough permissions")
     
@@ -99,27 +104,26 @@ def get_user(
 def get_current_user_info(current_user: User = Depends(auth.get_current_user)):
     return current_user
 
-# Question endpoints
+# Question endpoints  
 @app.get("/questions/{question_id}", response_model=schemas.QuestionResponse)
 def get_question(
     question_id: int, 
     db: Session = Depends(get_db),
     credentials = Depends(security)
 ):
-    # Optional authentication
     current_user = None
     if credentials:
         try:
             current_user = auth.get_current_user(credentials, db)
         except HTTPException:
-            pass  # Guest access allowed
+            pass
     
     question = crud.get_question(db, question_id=question_id)
     if question is None:
         raise HTTPException(status_code=404, detail="Question not found")
     
-    # Convert to response format
-    question_data = schemas.QuestionResponse.from_orm(question)
+    # Use model_validate instead of from_orm (Pydantic V2)
+    question_data = schemas.QuestionResponse.model_validate(question)
     
     # Hide is_correct for non-admin users
     if not current_user or current_user.role != "admin":
@@ -135,20 +139,18 @@ def get_questions(
     db: Session = Depends(get_db),
     credentials = Depends(security)
 ):
-    # Optional authentication
     current_user = None
     if credentials:
         try:
             current_user = auth.get_current_user(credentials, db)
         except HTTPException:
-            pass  # Guest access allowed
+            pass
     
     questions = crud.get_questions(db, skip=skip, limit=limit)
     
-    # Convert to response format and hide is_correct for non-admin users
     result = []
     for question in questions:
-        question_data = schemas.QuestionResponse.from_orm(question)
+        question_data = schemas.QuestionResponse.model_validate(question)
         if not current_user or current_user.role != "admin":
             for choice in question_data.choices:
                 choice.is_correct = None
@@ -188,19 +190,30 @@ def delete_question(
             raise HTTPException(status_code=404, detail="Question not found")
         return {"message": "Question deleted successfully", "id": question_id}
     except Exception as e:
-        # Don't catch HTTPExceptions - let them pass through
         if isinstance(e, HTTPException):
             raise e
-        # Log the error
-        print(f"Error deleting question {question_id}: {str(e)}")
+        logger.error(f"Error deleting question {question_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Error deleting question")
-# Answer endpoints
+
+# Enhanced Answer endpoints
 @app.post("/answers", response_model=schemas.AnswerResponse)
 def submit_answer(
     answer: schemas.AnswerCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(auth.get_current_user)
 ):
+    logger.info(f"Received answer submission: question_id={answer.question_id}, choice_id={answer.choice_id}")
+    logger.info(f"User ID: {current_user.id}")
+    
+    # Check if user already answered this question
+    existing_answer = crud.get_user_answer_for_question(db, user_id=current_user.id, question_id=answer.question_id)
+    if existing_answer:
+        logger.info(f"User {current_user.id} already answered question {answer.question_id}")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"You have already answered this question. Your previous answer was choice {existing_answer.choice_id}."
+        )
+    
     # Verify that the choice belongs to the question
     choice = crud.get_choice(db, choice_id=answer.choice_id)
     if not choice or choice.question_id != answer.question_id:
@@ -208,7 +221,7 @@ def submit_answer(
     
     db_answer = crud.create_answer(db=db, answer=answer, user_id=current_user.id)
     if db_answer is None:
-        raise HTTPException(status_code=400, detail="You have already answered this question or invalid data")
+        raise HTTPException(status_code=400, detail="Failed to create answer")
     
     return db_answer
 
@@ -219,8 +232,56 @@ def get_my_answers(
 ):
     return crud.get_user_answers(db, user_id=current_user.id)
 
-# Quiz endpoints - New
-@app.post("/quizzes", response_model=schemas.QuizResponse)
+# NEW: Reset answer endpoint for re-take functionality
+@app.delete("/my-answers/{question_id}")
+def reset_answer(
+    question_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth.get_current_user)
+):
+    """Reset user's answer for a specific question (for re-take quiz functionality)"""
+    result = crud.delete_user_answer(db, user_id=current_user.id, question_id=question_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="No answer found for this question")
+    return {"message": f"Answer for question {question_id} has been reset"}
+
+# NEW: Reset all answers for a quiz
+@app.delete("/quizzes/{quiz_id}/reset-answers")
+def reset_quiz_answers(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth.get_current_user)
+):
+    """Reset all user's answers for a specific quiz (for re-take functionality)"""
+    try:
+        # Get quiz questions
+        quiz_questions = crud.get_quiz_question_ids(db, quiz_id=quiz_id)
+        if not quiz_questions:
+            raise HTTPException(status_code=404, detail="Quiz not found or has no questions")
+        
+        # Reset all answers for these questions
+        reset_count = 0
+        total_score_deducted = 0.0
+        
+        for question_id in quiz_questions:
+            result = crud.delete_user_answer(db, user_id=current_user.id, question_id=question_id)
+            if result:
+                reset_count += 1
+        
+        logger.info(f"Reset {reset_count} answers for user {current_user.id} in quiz {quiz_id}")
+        
+        return {
+            "message": f"Reset {reset_count} answers for quiz {quiz_id}",
+            "quiz_id": quiz_id,
+            "reset_count": reset_count,
+            "total_questions": len(quiz_questions)
+        }
+    except Exception as e:
+        logger.error(f"Error resetting quiz answers: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to reset quiz answers")
+
+# Quiz endpoints with proper serialization
+@app.post("/quizzes")
 def create_quiz(
     quiz: schemas.QuizCreate,
     db: Session = Depends(get_db),
@@ -228,7 +289,7 @@ def create_quiz(
 ):
     return crud.create_quiz(db=db, quiz=quiz, creator_id=current_user.id)
 
-@app.get("/quizzes", response_model=List[schemas.QuizResponse])
+@app.get("/quizzes")
 def read_quizzes(
     skip: int = 0,
     limit: int = 100,
@@ -236,17 +297,19 @@ def read_quizzes(
 ):
     return crud.get_quizzes(db, skip=skip, limit=limit)
 
-@app.get("/quizzes/{quiz_id}", response_model=schemas.QuizDetailResponse)
+@app.get("/quizzes/{quiz_id}")
 def read_quiz(
     quiz_id: int,
     db: Session = Depends(get_db)
 ):
+    """Get quiz with properly serialized questions"""
     quiz = crud.get_quiz_with_questions(db, quiz_id=quiz_id)
     if quiz is None:
         raise HTTPException(status_code=404, detail="Quiz not found")
+    
     return quiz
 
-@app.put("/quizzes/{quiz_id}", response_model=schemas.QuizResponse)
+@app.put("/quizzes/{quiz_id}")
 def update_quiz(
     quiz_id: int,
     quiz: schemas.QuizUpdate,
@@ -257,14 +320,6 @@ def update_quiz(
     if db_quiz is None:
         raise HTTPException(status_code=404, detail="Quiz not found")
     return db_quiz
-
-@app.options("/quizzes", include_in_schema=False)
-async def options_quiz():
-    return {}
-
-@app.options("/questions", include_in_schema=False)
-async def options_question():
-    return {}
 
 @app.delete("/quizzes/{quiz_id}")
 def delete_quiz(
@@ -277,7 +332,34 @@ def delete_quiz(
         raise HTTPException(status_code=404, detail="Quiz not found")
     return {"message": "Quiz deleted successfully"}
 
+# OPTIONS endpoints
+@app.options("/quizzes", include_in_schema=False)
+async def options_quiz():
+    return {}
 
+@app.options("/questions", include_in_schema=False)
+async def options_question():
+    return {}
+
+@app.options("/answers", include_in_schema=False)
+async def options_answers():
+    return {}
+
+@app.options("/login", include_in_schema=False)
+async def options_login():
+    return {}
+
+@app.options("/me", include_in_schema=False)
+async def options_me():
+    return {}
+
+@app.options("/my-answers", include_in_schema=False)
+async def options_my_answers():
+    return {}
+
+@app.options("/users", include_in_schema=False)
+async def options_users():
+    return {}
 
 if __name__ == "__main__":
     import uvicorn

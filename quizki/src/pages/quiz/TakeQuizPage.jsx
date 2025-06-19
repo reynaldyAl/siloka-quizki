@@ -1,4 +1,3 @@
-// src/pages/quiz/TakeQuizPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Button from '../../components/common/Button/Button';
@@ -13,50 +12,48 @@ const TakeQuizPage = () => {
   const [questions, setQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState({});
-  const [timeLimit, setTimeLimit] = useState(15 * 60); // Default 15 minutes
+  const [timeLimit, setTimeLimit] = useState(15 * 60);
   const [timeLeft, setTimeLeft] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitProgress, setSubmitProgress] = useState(0);
   const [startTime, setStartTime] = useState(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     const fetchQuizData = async () => {
       try {
         setLoading(true);
-        console.log("Fetching quiz with ID:", quizId);
+        setIsResetting(true);
+        console.log("Starting fresh quiz with ID:", quizId);
         
-        // First, get all quizzes to find the one with this ID
-        const allQuizzes = await quizService.getQuizzes();
-        console.log("Available quizzes:", allQuizzes);
+        // NEW: Use startFreshQuiz to reset previous answers
+        const freshQuizResult = await quizService.startFreshQuiz(quizId);
+        console.log("Fresh quiz result:", freshQuizResult);
         
-        // Compare as string to avoid type issues
-        const currentQuiz = allQuizzes.find(q => String(q.id) === String(quizId));
-        console.log("Selected quiz:", currentQuiz);
-        
-        if (!currentQuiz) {
-          throw new Error('Quiz not found');
+        if (!freshQuizResult.success) {
+          throw new Error('Failed to prepare quiz');
         }
         
+        const currentQuiz = freshQuizResult.quiz;
         setQuiz(currentQuiz);
+        setIsResetting(false);
         
-        // Fetch all questions for this quiz
+        // Get question details
         const questionsData = [];
-        for (let qId of currentQuiz.questions) {
+        const questionIds = currentQuiz.questions || [];
+        
+        for (let qId of questionIds) {
           try {
             const questionData = await quizService.getQuestionById(qId);
             console.log("Raw question data:", questionData);
             
-            // Transform the API response to match the expected format
             const transformedQuestion = {
               id: questionData.id,
-              // Use question_text field from API, fallback to text if available
               text: questionData.question_text || questionData.text || '',
-              // Transform choices to match expected format
               choices: questionData.choices.map(choice => ({
                 id: choice.id,
-                // Use choice_text field from API, fallback to text if available
                 text: choice.choice_text || choice.text || '',
                 is_correct: choice.is_correct
               }))
@@ -71,21 +68,29 @@ const TakeQuizPage = () => {
         
         setQuestions(questionsData);
         
-        // Set time limit based on quiz data
+        // Set time limit
         if (currentQuiz.timeLimit) {
-          setTimeLimit(currentQuiz.timeLimit * 60); // Convert minutes to seconds
+          setTimeLimit(currentQuiz.timeLimit * 60);
           setTimeLeft(currentQuiz.timeLimit * 60);
         } else {
-          // Default time: 2 minutes per question
           const calculatedTime = Math.max(10, questionsData.length * 2);
           setTimeLimit(calculatedTime * 60);
           setTimeLeft(calculatedTime * 60);
         }
         
         setStartTime(new Date());
+        
+        // Show success message about reset
+        if (freshQuizResult.resetResult.resetCount > 0) {
+          console.log(`✅ Reset ${freshQuizResult.resetResult.resetCount} previous answers - starting fresh!`);
+        } else {
+          console.log("✅ Starting fresh quiz session!");
+        }
+        
       } catch (err) {
-        console.error('Error fetching questions:', err);
-        setError('Failed to load quiz questions. Please try again later.');
+        console.error('Error fetching quiz data:', err);
+        setError('Failed to load quiz. Please try again later.');
+        setIsResetting(false);
       } finally {
         setLoading(false);
       }
@@ -94,7 +99,7 @@ const TakeQuizPage = () => {
     fetchQuizData();
   }, [quizId]);
 
-  // Set up timer after quiz data is loaded
+  // Timer logic
   useEffect(() => {
     if (!timeLeft || loading) return;
     
@@ -102,7 +107,6 @@ const TakeQuizPage = () => {
       setTimeLeft(prevTime => {
         if (prevTime <= 1) {
           clearInterval(timer);
-          // Auto-submit when time runs out
           handleSubmitQuiz();
           return 0;
         }
@@ -139,14 +143,12 @@ const TakeQuizPage = () => {
     setSubmitProgress(0);
     
     try {
-      // Calculate time spent
       const endTime = new Date();
       const timeSpentMs = endTime - startTime;
       const timeSpentMinutes = Math.floor(timeSpentMs / 60000);
       const timeSpentSeconds = Math.floor((timeSpentMs % 60000) / 1000);
       const timeSpent = `${String(timeSpentMinutes).padStart(2, '0')}:${String(timeSpentSeconds).padStart(2, '0')}`;
       
-      // Submit answers to API
       const submittedAnswers = [];
       const totalAnswers = Object.keys(userAnswers).length;
       let completedAnswers = 0;
@@ -162,22 +164,20 @@ const TakeQuizPage = () => {
           submittedAnswers.push(response);
         } catch (err) {
           console.error(`Error submitting answer for question ${questionId}:`, err);
+          // Continue with other answers even if one fails
         }
         
         completedAnswers++;
         setSubmitProgress(Math.round((completedAnswers / totalAnswers) * 100));
       }
       
-      // Add a small delay to ensure all answers are saved before fetching them
       console.log("Waiting for answers to be saved...");
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Get all submitted answers
       console.log("Fetching submitted answers");
       const answeredQuestions = await quizService.getUserAnswers();
       console.log("User answers from API:", answeredQuestions);
       
-      // Process results
       const results = processResults(
         answeredQuestions, 
         questions, 
@@ -188,11 +188,10 @@ const TakeQuizPage = () => {
       
       console.log("Final quiz results:", results);
       
-      // Navigate to results page
       navigate(`/quizzes/${quizId}/results`, {
         state: { 
           results,
-          refreshDashboard: true  // Add this to refresh dashboard when returning
+          refreshDashboard: true
         }
       });
     } catch (err) {
@@ -202,7 +201,6 @@ const TakeQuizPage = () => {
     }
   };
 
-  // Process results from API responses - fixed version
   const processResults = (answeredQuestions, questions, userAnswers, timeSpent, quiz) => {
     console.log("Processing results with data:", {
       answeredQuestionsCount: answeredQuestions.length,
@@ -210,7 +208,6 @@ const TakeQuizPage = () => {
       userAnswersCount: Object.keys(userAnswers).length
     });
 
-    // Find answers for current quiz questions - with type-safe comparison
     const quizQuestionIds = questions.map(q => Number(q.id));
     const relevantAnswers = answeredQuestions.filter(a => 
       quizQuestionIds.includes(Number(a.question_id))
@@ -218,21 +215,18 @@ const TakeQuizPage = () => {
     
     console.log("Relevant answers for this quiz:", relevantAnswers);
     
-    // Count correct answers
     const correctAnswers = relevantAnswers.filter(answer => answer.is_correct === true);
     console.log("Correct answers:", correctAnswers);
     
-    // Build results object
     return {
       quizId,
       quizTitle: quiz?.title || "Quiz",
       score: correctAnswers.length,
       totalQuestions: questions.length,
       timeSpent,
-      passingScore: Math.ceil(questions.length * 0.6), // 60% passing score
+      passingScore: Math.ceil(questions.length * 0.6),
       dateTaken: new Date().toISOString(),
       questions: questions.map(question => {
-        // Convert IDs to numbers for consistent comparison
         const questionId = Number(question.id);
         const userChoiceId = userAnswers[question.id] ? Number(userAnswers[question.id]) : null;
         
@@ -240,10 +234,8 @@ const TakeQuizPage = () => {
           choice => Number(choice.id) === userChoiceId
         );
         
-        // Find the correct choice - first try local data
         let correctChoice = question.choices.find(choice => choice.is_correct === true);
         
-        // If not found in local data, check API responses
         if (!correctChoice) {
           const correctAnswerData = relevantAnswers.find(a => 
             Number(a.question_id) === questionId && a.is_correct === true
@@ -256,7 +248,6 @@ const TakeQuizPage = () => {
           }
         }
         
-        // Find if this question was answered correctly
         const userAnswerIsCorrect = relevantAnswers.find(
           a => Number(a.question_id) === questionId && 
               Number(a.choice_id) === userChoiceId && 
@@ -280,7 +271,6 @@ const TakeQuizPage = () => {
     };
   };
 
-  // Format time from seconds to MM:SS
   const formatTime = (seconds) => {
     if (seconds === null) return "00:00";
     const mins = Math.floor(seconds / 60);
@@ -299,7 +289,17 @@ const TakeQuizPage = () => {
               <div className="orbit"></div>
               <div className="planet"></div>
             </div>
-            <p>Loading quiz questions...</p>
+            <p>
+              {isResetting 
+                ? "🔄 Preparing fresh quiz session..." 
+                : "📚 Loading quiz questions..."
+              }
+            </p>
+            {isResetting && (
+              <p style={{ fontSize: '0.9em', opacity: 0.8, marginTop: '10px' }}>
+                Clearing previous answers...
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -313,7 +313,7 @@ const TakeQuizPage = () => {
         <div className="stars-bg medium"></div>
         <div className="take-quiz-content">
           <div className="quiz-error">
-            <h2>Houston, we have a problem</h2>
+            <h2>🚀 Houston, we have a problem</h2>
             <p>{error}</p>
             <Button 
               variant="secondary" 
@@ -335,7 +335,7 @@ const TakeQuizPage = () => {
         <div className="stars-bg medium"></div>
         <div className="take-quiz-content">
           <div className="quiz-error">
-            <h2>No Questions Available</h2>
+            <h2>📝 No Questions Available</h2>
             <p>This quiz doesn't have any questions yet.</p>
             <Button 
               variant="secondary" 
@@ -354,7 +354,6 @@ const TakeQuizPage = () => {
 
   return (
     <div className="take-quiz-container">
-      {/* Star background */}
       <div className="stars-bg small"></div>
       <div className="stars-bg medium"></div>
       <div className="stars-bg large"></div>
