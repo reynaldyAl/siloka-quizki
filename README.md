@@ -14,10 +14,36 @@ SILOKA QUIZKI adalah aplikasi web full-stack yang dibangun dengan JSX yang terin
 ## 🔧 Tech Stack
 
 - Frontend: React.js dengan JSX
-- Backend: Node.js/Express
-- Database: (MongoDB, PostgreSQL, dll. - akan ditentukan)
+- Backend: Node.js
+- Database: Fast API and SQLite
 - Integrasi API
-- Teknologi lain: (Akan ditambahkan sesuai kebutuhan)
+- Teknologi lain: 
+   - Prop-Types, 
+   - CSS, Tailwinds, sqlalchemy,
+   - python-jose[cryptography], 
+   - passlib[bcrypt], python-multipart, python-dotenv, pydantic[email], 
+   - email-validator
+
+
+## How to run
+### Requirements
+- Npm install Prop-types
+- npm install -D tailwindcss@3
+- npx tailwindcss init -p 
+- pip install -r requirements.txt
+
+#### Note : We're using 2 terminal : Back-End run, Front-end run
+### Terminal 1 (Backend)
+- cd backend
+- python main.py
+
+### Terminal 2 (Front-end)
+- cd quizki
+- npm run dev
+- open the localhost in the terminal
+
+#### Enjoy Testing!
+
 
 ## 👥 Panduan Kolaborasi Git
 
