@@ -7,10 +7,19 @@ import api from '../../services/api';
 
 const ProfilePage = () => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // Start with loading state
+  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  
+  // Calculate user rank based on score and quizzes taken
+  const getUserRank = (score, quizzesTaken) => {
+    if (quizzesTaken === 0) return "Novice";
+    if (score >= 90 && quizzesTaken >= 10) return "Quiz Master";
+    if (score >= 75 && quizzesTaken >= 5) return "Quiz Expert";
+    if (score >= 60) return "Quiz Enthusiast";
+    return "Quiz Apprentice";
+  };
   
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -26,7 +35,7 @@ const ProfilePage = () => {
         const response = await api.get('/me');
         console.log('Profile API response:', response.data);
         
-        // Get user's quiz statistics (if your API has this endpoint)
+        // Initialize default quiz statistics
         let quizStats = {
           quizzesTaken: 0,
           averageScore: 0,
@@ -34,23 +43,56 @@ const ProfilePage = () => {
         };
         
         try {
-          // If you have a quiz statistics endpoint
-          const statsResponse = await api.get('/my-statistics');
-          quizStats = statsResponse.data;
+          // Fetch quiz scores from the my-quiz-scores endpoint
+          const quizScoresResponse = await api.get('/my-quiz-scores');
+          const quizScores = quizScoresResponse.data;
+          console.log('Quiz scores:', quizScores);
+          
+          if (quizScores && quizScores.length > 0) {
+            // Calculate total quizzes taken - number of unique quizzes
+            const quizzesTaken = quizScores.length;
+            
+            // Calculate average score across all quizzes
+            let totalScore = 0;
+            quizScores.forEach(score => {
+              // Calculate percentage score for each quiz
+              const quizScore = score.total_questions > 0 
+                ? (score.correct_answers / score.total_questions) * 100 
+                : 0;
+              totalScore += quizScore;
+            });
+            
+            // Calculate final average and round to nearest integer
+            const averageScore = Math.round(totalScore / quizzesTaken);
+            
+            // Determine rank based on score and quizzes taken
+            const rank = getUserRank(averageScore, quizzesTaken);
+            
+            quizStats = {
+              quizzesTaken,
+              averageScore,
+              rank
+            };
+            
+            console.log('Calculated quiz stats:', quizStats);
+          }
         } catch (statsErr) {
-          console.warn('Could not fetch quiz statistics:', statsErr);
-          // Use demo statistics
+          console.warn('Could not fetch quiz scores:', statsErr);
+          // If API call fails, use demo statistics for better user experience
           quizStats = {
-            quizzesTaken: 12,
-            averageScore: 85,
-            rank: 'Quiz Master'
+            quizzesTaken: 5,
+            averageScore: 65,
+            rank: 'Quiz Enthusiast'
           };
+          console.log('Using demo statistics:', quizStats);
         }
         
-        // Combine API response with additional data
+        // Combine API response with quiz statistics
         const userData = {
           ...response.data,
-          ...quizStats
+          quizzesTaken: quizStats.quizzesTaken,
+          averageScore: quizStats.averageScore,
+          rank: quizStats.rank
         };
         
         setUser(userData);
@@ -73,9 +115,9 @@ const ProfilePage = () => {
             const userData = JSON.parse(storedUser);
             setUser({
               ...userData,
-              quizzesTaken: 12,
-              averageScore: 85,
-              rank: 'Quiz Master'
+              quizzesTaken: userData.quizzesTaken || 5,
+              averageScore: userData.averageScore || 65,
+              rank: userData.rank || 'Quiz Enthusiast'
             });
           } catch (parseErr) {
             console.error('Failed to parse stored user data:', parseErr);
@@ -107,10 +149,14 @@ const ProfilePage = () => {
       // For now, simulate API call
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      // Update user data
+      // Update user data while preserving quiz statistics
       const updatedUser = {
         ...user,
-        ...formData
+        ...formData,
+        // Keep quiz statistics intact when updating profile
+        quizzesTaken: user.quizzesTaken,
+        averageScore: user.averageScore,
+        rank: user.rank
       };
       
       // Update localStorage
