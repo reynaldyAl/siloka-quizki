@@ -1,84 +1,107 @@
-// components/dashboard/QuestionManagement.jsx
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+// src/components/dashboard/QuestionManagement.jsx
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import DeleteConfirmationModal from '../common/DeleteConfirmationModal';
 
-const QuestionManagement = ({ questions }) => {
+const QuestionManagement = ({ questions = [], loading = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [filteredQuestions, setFilteredQuestions] = useState([]);
   const [deleting, setDeleting] = useState(null);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
   
-  // Filter questions based on search term
-  const filteredQuestions = questions.filter(question => 
-    question.question_text.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  const handleDelete = async (questionId) => {
-    if (!confirm('Are you sure you want to delete this question? This action cannot be undone.')) {
-      return;
-    }
+  // Delete modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [questionToDelete, setQuestionToDelete] = useState(null);
+
+  // Update filtered questions when questions change (filtering happens at parent level)
+  useEffect(() => {
+    setFilteredQuestions(questions);
+  }, [questions]);
+
+  const openDeleteModal = (questionId) => {
+    setQuestionToDelete(questionId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setQuestionToDelete(null);
+  };
+
+  const handleDelete = async () => {
+    if (!questionToDelete) return;
     
     try {
-      setDeleting(questionId);
-      setError(null);
-      
-      await api.delete(`/questions/${questionId}`);
-      
-      // Remove the question from the list (would be better to refetch, but this is a quick update)
-      window.location.reload();
+      setDeleting(questionToDelete);
+      await api.delete(`/questions/${questionToDelete}`);
+      setFilteredQuestions(prev => prev.filter(q => q.id !== questionToDelete));
+      closeDeleteModal();
     } catch (err) {
       console.error('Error deleting question:', err);
-      setError('Failed to delete question. Please try again.');
+      setError('Failed to delete question');
     } finally {
       setDeleting(null);
     }
   };
-  
+
+  const handleEdit = (questionId) => {
+    navigate(`/admin/edit-question/${questionId}`);
+  };
+
+  const handleCreateQuestion = () => {
+    navigate('/admin/create-question');
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-6">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {error && (
-        <div className="mb-4 p-3 bg-red-900/50 border border-red-700 text-red-200 rounded-lg">
+        <div className="mb-3 p-3 bg-red-900/50 border border-red-700 text-red-200 rounded-lg">
           {error}
         </div>
       )}
       
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDelete}
+        itemType="Question"
+      />
+      
+      {/* Top section with Add New button */}
       <div className="flex justify-between items-center mb-4">
-        <div className="relative flex-grow mr-4">
-          <input
-            type="text"
-            placeholder="Search questions..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-        </div>
-        
-        <Link 
-          to="/admin/create-question"
+        <h2 className="text-xl font-semibold text-white">Question List</h2>
+        <button 
+          onClick={handleCreateQuestion}
           className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap"
         >
           Add New
-        </Link>
+        </button>
       </div>
       
       {filteredQuestions.length === 0 ? (
-        <div className="text-center py-8 text-gray-400">
-          {searchTerm ? 'No questions match your search.' : 'No questions available.'}
+        <div className="text-center py-6 text-gray-400">
+          No questions available.
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto mt-2">
           <table className="w-full min-w-full divide-y divide-gray-700">
             <thead>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Question</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Category</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Difficulty</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Question</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Category</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Difficulty</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
@@ -100,11 +123,14 @@ const QuestionManagement = ({ questions }) => {
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
-                      <Link to={`/admin/edit-question/${question.id}`} className="text-blue-400 hover:text-blue-300">
+                      <button
+                        onClick={() => handleEdit(question.id)}
+                        className="text-blue-400 hover:text-blue-300"
+                      >
                         Edit
-                      </Link>
+                      </button>
                       <button 
-                        onClick={() => handleDelete(question.id)}
+                        onClick={() => openDeleteModal(question.id)}
                         disabled={deleting === question.id}
                         className="text-red-400 hover:text-red-300 disabled:opacity-50"
                       >
