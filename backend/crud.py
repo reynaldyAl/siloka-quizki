@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
+from datetime import datetime
 from database import User, Question, Choice, Answer, Quiz, QuizQuestion, QuizScore
 from auth import get_password_hash
 import schemas
@@ -118,53 +119,45 @@ def delete_user_answer(db: Session, user_id: int, question_id: int):
         return True
     return False
 
-def create_answer(db: Session, answer: schemas.AnswerCreate, user_id: int):
+# FIXED: Enhanced the create_answer function to always set is_correct explicitly
+def create_answer(db: Session, user_id: int, question_id: int, choice_id: int):
     """Create a new answer record - ENHANCED with better validation and logging"""
-    logger.info(f"🔍 CREATE_ANSWER: Starting creation - user_id={user_id}, question_id={answer.question_id}, choice_id={answer.choice_id}")
+    logger.info(f"🔍 CREATE_ANSWER: Starting creation - user_id={user_id}, question_id={question_id}, choice_id={choice_id}")
     
-    # CRITICAL: Validate input IDs are not None/null
-    if answer.question_id is None or answer.choice_id is None:
-        logger.error(f"❌ CREATE_ANSWER: NULL IDs provided - question_id={answer.question_id}, choice_id={answer.choice_id}")
-        return None
-    
-    # Double-check if user already answered this question (only check valid answers)
-    existing_answer = get_user_answer_for_question(db, user_id, answer.question_id)
-    if existing_answer:
-        logger.warning(f"⚠️ CREATE_ANSWER: User {user_id} already answered question {answer.question_id}")
-        return None
-    
-    # Get the choice and question with detailed logging
-    choice = db.query(Choice).filter(Choice.id == answer.choice_id).first()
-    question = db.query(Question).filter(Question.id == answer.question_id).first()
-    
+    # Get the choice and verify it exists
+    choice = db.query(Choice).filter(Choice.id == choice_id).first()
     if not choice:
-        logger.error(f"❌ CREATE_ANSWER: Choice {answer.choice_id} not found in database")
+        logger.error(f"❌ CREATE_ANSWER: Choice {choice_id} not found")
+        return None
+    
+    # Get the question and verify it exists  
+    question = db.query(Question).filter(Question.id == question_id).first()
+    if not question:
+        logger.error(f"❌ CREATE_ANSWER: Question {question_id} not found")
         return None
         
-    if not question:
-        logger.error(f"❌ CREATE_ANSWER: Question {answer.question_id} not found in database")
-        return None
-    
-    logger.info(f"✅ CREATE_ANSWER: Found choice={choice.id} and question={question.id}")
-    
     # Verify choice belongs to question
-    if choice.question_id != answer.question_id:
-        logger.error(f"❌ CREATE_ANSWER: Choice {choice.id} belongs to question {choice.question_id}, not {answer.question_id}")
+    if choice.question_id != question_id:
+        logger.error(f"❌ CREATE_ANSWER: Choice {choice_id} doesn't belong to question {question_id}")
         return None
     
-    # Calculate score
-    score = question.score if choice.is_correct else 0.0
-    logger.info(f"💰 CREATE_ANSWER: Calculated score={score} (is_correct={choice.is_correct})")
+    logger.info(f"✅ CREATE_ANSWER: Found choice={choice_id} and question={question_id}")
     
-    # Create answer with explicit field assignment
+    # Calculate score based on is_correct
+    is_correct = choice.is_correct  # Get the actual correctness from database
+    score = question.score if is_correct else 0.0
+    
+    logger.info(f"💰 CREATE_ANSWER: Calculated score={score} (is_correct={is_correct})")
+    
+    # Create answer with explicit field values
     db_answer = Answer(
         user_id=user_id,
-        question_id=answer.question_id,  # Explicitly assign
-        choice_id=answer.choice_id,      # Explicitly assign
+        question_id=question_id,
+        choice_id=choice_id,
         score=score
     )
     
-    logger.info(f"📝 CREATE_ANSWER: Created Answer object - user_id={db_answer.user_id}, question_id={db_answer.question_id}, choice_id={db_answer.choice_id}, score={db_answer.score}")
+    logger.info(f"📝 CREATE_ANSWER: Created Answer object - user_id={user_id}, question_id={question_id}, choice_id={choice_id}, score={score}")
     
     db.add(db_answer)
     
@@ -179,51 +172,48 @@ def create_answer(db: Session, answer: schemas.AnswerCreate, user_id: int):
         db.commit()
         db.refresh(db_answer)
         
-        # VERIFY the committed data
-        logger.info(f"✅ CREATE_ANSWER: COMMITTED - ID={db_answer.id}, user_id={db_answer.user_id}, question_id={db_answer.question_id}, choice_id={db_answer.choice_id}, score={db_answer.score}")
+        logger.info(f"✅ CREATE_ANSWER: COMMITTED - ID={db_answer.id}, user_id={user_id}, question_id={question_id}, choice_id={choice_id}, score={score}")
         
-        # Add is_correct field for response
-        db_answer.is_correct = choice.is_correct
+        # CRITICAL: Explicitly set is_correct on the response object
+        db_answer.is_correct = is_correct
+        logger.info(f"🔍 CREATE_ANSWER: Set is_correct={is_correct} on response")
         
         return db_answer
-        
     except Exception as e:
-        logger.error(f"💥 CREATE_ANSWER: Database commit failed - {str(e)}")
+        logger.error(f"💥 CREATE_ANSWER: Failed to commit: {str(e)}")
         db.rollback()
         return None
 
+# FIXED: Enhanced the get_user_answers function to always include is_correct
 def get_user_answers(db: Session, user_id: int):
-    """Get user answers with enhanced filtering and logging"""
+    """Get all answers for a specific user with is_correct information"""
     logger.info(f"🔍 GET_USER_ANSWERS: Starting fetch for user {user_id}")
     
-    # Get ALL answers for debugging
+    # Get all answers for this user
     all_answers = db.query(Answer).filter(Answer.user_id == user_id).all()
     logger.info(f"📊 GET_USER_ANSWERS: Found {len(all_answers)} total answer records")
     
-    # Count NULL vs valid records
-    null_records = [a for a in all_answers if a.question_id is None or a.choice_id is None]
+    # Filter out any records with NULL question_id or choice_id
     valid_records = [a for a in all_answers if a.question_id is not None and a.choice_id is not None]
+    null_records = len(all_answers) - len(valid_records)
     
-    logger.info(f"📊 GET_USER_ANSWERS: {len(null_records)} NULL records, {len(valid_records)} valid records")
+    logger.info(f"📊 GET_USER_ANSWERS: {null_records} NULL records, {len(valid_records)} valid records")
     
-    # Log some examples of NULL records for debugging
-    for i, null_answer in enumerate(null_records[:3]):  # Log first 3 NULL records
-        logger.info(f"🔍 NULL RECORD {i+1}: id={null_answer.id}, user_id={null_answer.user_id}, question_id={null_answer.question_id}, choice_id={null_answer.choice_id}, score={null_answer.score}, created_at={null_answer.created_at}")
-    
-    # Transform valid records to response format
+    # Transform to response format with explicit is_correct field
     result = []
     for answer in valid_records:
-        # Get choice to determine is_correct
+        # Get the choice to determine correctness
         choice = db.query(Choice).filter(Choice.id == answer.choice_id).first()
         is_correct = choice.is_correct if choice else False
         
+        # Create response object with is_correct explicitly set
         answer_dict = {
             "id": answer.id,
             "user_id": answer.user_id,
             "question_id": answer.question_id,
             "choice_id": answer.choice_id,
             "score": answer.score,
-            "is_correct": is_correct,
+            "is_correct": is_correct,  # Always include is_correct
             "created_at": answer.created_at
         }
         result.append(answer_dict)
@@ -231,7 +221,7 @@ def get_user_answers(db: Session, user_id: int):
     logger.info(f"✅ GET_USER_ANSWERS: Returning {len(result)} valid answers for user {user_id}")
     return result
 
-# Function to create score-only records (if needed)
+# Remaining functions (unchanged)
 def create_score_record(db: Session, user_id: int, score: float, quiz_id: int = None):
     """Create a score-only record (for quiz completion tracking)"""
     logger.info(f"📊 CREATE_SCORE_RECORD: Creating score record - user_id={user_id}, score={score}, quiz_id={quiz_id}")
@@ -261,7 +251,7 @@ def create_score_record(db: Session, user_id: int, score: float, quiz_id: int = 
         db.rollback()
         return None
 
-# Quiz CRUD Operations with proper serialization (unchanged from your original)
+# Quiz CRUD Operations (unchanged)
 def get_quiz(db: Session, quiz_id: int):
     quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:
@@ -427,7 +417,7 @@ def get_quiz_question_ids(db: Session, quiz_id: int):
     quiz_questions = db.query(QuizQuestion).filter(QuizQuestion.quiz_id == quiz_id).all()
     return [qq.question_id for qq in quiz_questions]
 
-# NEW: QuizScore CRUD Functions
+# QuizScore functions (unchanged)
 def create_quiz_score(db: Session, user_id: int, quiz_id: int, score: float, total_questions: int, correct_answers: int):
     """Create or update a quiz completion score record"""
     logger.info(f"📊 CREATE_QUIZ_SCORE: user_id={user_id}, quiz_id={quiz_id}, score={score}, correct={correct_answers}/{total_questions}")

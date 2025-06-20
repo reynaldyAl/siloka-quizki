@@ -28,7 +28,7 @@ const TakeQuizPage = () => {
         setIsResetting(true);
         console.log("Starting fresh quiz with ID:", quizId);
         
-        // NEW: Use startFreshQuiz to reset previous answers AND quiz score
+        // Use startFreshQuiz to reset previous answers AND quiz score
         const freshQuizResult = await quizService.startFreshQuiz(quizId);
         console.log("Fresh quiz result:", freshQuizResult);
         
@@ -167,9 +167,21 @@ const TakeQuizPage = () => {
             Number(choiceId)
           );
           
+          // IMPROVED: Validate that is_correct is present in response
+          if (response.is_correct === undefined) {
+            console.warn(`⚠️ Backend didn't provide is_correct for question ${questionId}`);
+          } else {
+            console.log(`✅ Backend validation: Answer is ${response.is_correct ? 'CORRECT' : 'INCORRECT'}`);
+          }
+          
           submittedAnswers.push(response);
           totalScore += response.score || 0;
-          if (response.is_correct) correctCount++;
+          
+          // Only count as correct if is_correct is explicitly true
+          if (response.is_correct === true) {
+            correctCount++;
+            console.log(`✓ Correct answer for question ${questionId}`);
+          }
           
           console.log(`✅ Answer submitted: score=${response.score}, correct=${response.is_correct}`);
           
@@ -185,7 +197,7 @@ const TakeQuizPage = () => {
       
       console.log(`📊 QUIZ SUMMARY: Total Score=${totalScore}, Correct=${correctCount}/${totalQuestions}`);
       
-      // NEW: Submit quiz completion score to QuizScore table
+      // Submit quiz completion score to QuizScore table
       try {
         console.log(`📊 Submitting quiz score to database...`);
         const quizScoreResponse = await quizService.submitQuizScore(
@@ -276,6 +288,8 @@ const TakeQuizPage = () => {
         let correctChoice = question.choices.find(choice => choice.is_correct === true);
         
         if (!correctChoice) {
+          // If correct choice wasn't in the original data (non-admin user),
+          // Try to find it from the submitted answers
           const correctAnswerData = relevantAnswers.find(a => 
             Number(a.question_id) === questionId && a.is_correct === true
           );
@@ -287,16 +301,19 @@ const TakeQuizPage = () => {
           }
         }
         
-        const userAnswerIsCorrect = relevantAnswers.find(
+        // Get the actual answer submission from the backend results
+        const userAnswer = relevantAnswers.find(
           a => Number(a.question_id) === questionId && 
-              Number(a.choice_id) === userChoiceId && 
-              a.is_correct === true
+              Number(a.choice_id) === userChoiceId
         );
+        
+        // Trust the backend's validation result
+        const isCorrect = userAnswer?.is_correct === true;
         
         console.log(`Question ${questionId} processing:`, {
           userChoiceId,
           correctChoiceId: correctChoice?.id,
-          userAnswerIsCorrect: !!userAnswerIsCorrect
+          userAnswerIsCorrect: isCorrect
         });
         
         return {
@@ -304,7 +321,7 @@ const TakeQuizPage = () => {
           question: question.text,
           userAnswer: userChoice ? userChoice.text : "Not answered",
           correctAnswer: correctChoice ? correctChoice.text : "Unknown",
-          isCorrect: !!userAnswerIsCorrect
+          isCorrect: isCorrect
         };
       })
     };
@@ -316,31 +333,6 @@ const TakeQuizPage = () => {
     const secs = seconds % 60;
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
-
-  // Test direct answer submission function for debugging
-  const testDirectSubmission = async () => {
-    console.log("🧪 TESTING: Direct answer submission");
-    
-    try {
-      // Use actual IDs from your database
-      const testResult = await quizService.submitAnswer(1, 1); // question 1, choice 1
-      console.log("🧪 TEST RESULT:", testResult);
-      
-      // Check what's in the database immediately after
-      await quizService.debugDatabaseAnswers();
-      
-    } catch (error) {
-      console.error("🧪 TEST FAILED:", error);
-    }
-  };
-
-  // Call test function in development mode
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && questions.length > 0) {
-      // Uncomment this line to test direct submission
-      // testDirectSubmission();
-    }
-  }, [questions]);
 
   if (loading) {
     return (

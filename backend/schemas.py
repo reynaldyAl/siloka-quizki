@@ -73,6 +73,7 @@ class AnswerResponse(BaseModel):
     question_id: int
     choice_id: int
     score: float
+    is_correct: bool  # Add this field
     created_at: datetime
     
     class Config:

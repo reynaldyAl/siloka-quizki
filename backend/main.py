@@ -195,7 +195,6 @@ def delete_question(
         logger.error(f"Error deleting question {question_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Error deleting question")
 
-# Enhanced Answer endpoints
 @app.post("/answers", response_model=schemas.AnswerResponse)
 def submit_answer(
     answer: schemas.AnswerCreate,
@@ -209,19 +208,26 @@ def submit_answer(
     existing_answer = crud.get_user_answer_for_question(db, user_id=current_user.id, question_id=answer.question_id)
     if existing_answer:
         logger.info(f"User {current_user.id} already answered question {answer.question_id}")
-        raise HTTPException(
-            status_code=400, 
-            detail=f"You have already answered this question. Your previous answer was choice {existing_answer.choice_id}."
-        )
+        
+        # Delete the previous answer instead of rejecting it
+        crud.delete_user_answer(db, user_id=current_user.id, question_id=answer.question_id)
+        logger.info(f"Deleted previous answer for question {answer.question_id}")
     
     # Verify that the choice belongs to the question
     choice = crud.get_choice(db, choice_id=answer.choice_id)
     if not choice or choice.question_id != answer.question_id:
         raise HTTPException(status_code=400, detail="Invalid choice for this question")
     
-    db_answer = crud.create_answer(db=db, answer=answer, user_id=current_user.id)
+    # Fixed function parameters
+    db_answer = crud.create_answer(
+        db=db,
+        user_id=current_user.id,
+        question_id=answer.question_id, 
+        choice_id=answer.choice_id
+    )
+    
     if db_answer is None:
-        raise HTTPException(status_code=400, detail="Failed to create answer")
+        raise HTTPException(status_code=500, detail="Failed to create answer")
     
     return db_answer
 
