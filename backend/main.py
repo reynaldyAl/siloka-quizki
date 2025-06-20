@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
+from database import Choice, get_db, User, Answer, QuizScore
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import timedelta
@@ -132,6 +133,46 @@ def get_question(
     
     return question_data
 
+@app.get("/admin/statistics")
+def get_admin_statistics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth.require_admin)
+):
+    """Get statistics for admin dashboard"""
+    from sqlalchemy.sql import func
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    logger.info("Calculating admin statistics...")
+    
+    # Count valid answers
+    total_answers = db.query(Answer).filter(
+        Answer.question_id.isnot(None),
+        Answer.choice_id.isnot(None)
+    ).count()
+    logger.info(f"Total valid answers: {total_answers}")
+    
+    # Count correct answers
+    correct_answers = db.query(Answer).join(
+        Choice, Answer.choice_id == Choice.id
+    ).filter(
+        Choice.is_correct == True,
+        Answer.question_id.isnot(None),
+        Answer.choice_id.isnot(None)
+    ).count()
+    
+    # Calculate percentage of correct answers
+    if total_answers > 0:
+        avg_score = round(correct_answers * 100 / total_answers)
+        logger.info(f"Correct answers: {correct_answers}/{total_answers} = {avg_score}%")
+    else:
+        avg_score = 0
+        logger.info("No answers found, setting average score to 0%")
+    
+    return {
+        "total_answers": total_answers, 
+        "average_score": avg_score
+    }
 @app.get("/questions", response_model=List[schemas.QuestionResponse])
 def get_questions(
     skip: int = 0, 
