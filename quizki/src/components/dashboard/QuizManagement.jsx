@@ -1,7 +1,8 @@
-// components/dashboard/QuizManagement.jsx
+// src/components/dashboard/QuizManagement.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import DeleteConfirmationModal from '../common/DeleteConfirmationModal';
 
 const QuizManagement = () => {
   const [quizzes, setQuizzes] = useState([]);
@@ -10,6 +11,10 @@ const QuizManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [deleting, setDeleting] = useState(null);
   const navigate = useNavigate();
+  
+  // Delete modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [quizToDelete, setQuizToDelete] = useState(null);
   
   useEffect(() => {
     fetchQuizzes();
@@ -28,15 +33,24 @@ const QuizManagement = () => {
     }
   };
   
-  const handleDelete = async (quizId) => {
-    if (!confirm('Are you sure you want to delete this quiz? This action cannot be undone.')) {
-      return;
-    }
+  const openDeleteModal = (quizId) => {
+    setQuizToDelete(quizId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setQuizToDelete(null);
+  };
+  
+  const handleDelete = async () => {
+    if (!quizToDelete) return;
     
     try {
-      setDeleting(quizId);
-      await api.delete(`/quizzes/${quizId}`);
+      setDeleting(quizToDelete);
+      await api.delete(`/quizzes/${quizToDelete}`);
       fetchQuizzes(); // Reload the list
+      closeDeleteModal();
     } catch (err) {
       console.error('Error deleting quiz:', err);
       setError('Failed to delete quiz');
@@ -69,6 +83,15 @@ const QuizManagement = () => {
           {error}
         </div>
       )}
+      
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDelete}
+        itemType="Quiz"
+        title="Delete Quiz"
+      />
       
       <div className="flex justify-between items-center mb-4">
         <div className="relative flex-grow mr-4">
@@ -140,7 +163,7 @@ const QuizManagement = () => {
                         Edit
                       </button>
                       <button 
-                        onClick={() => handleDelete(quiz.id)}
+                        onClick={() => openDeleteModal(quiz.id)}
                         disabled={deleting === quiz.id}
                         className="text-red-400 hover:text-red-300 disabled:opacity-50"
                       >
