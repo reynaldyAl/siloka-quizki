@@ -1,12 +1,13 @@
 import api from './api';
 //  ini adalah versi better dari yang sebelumnya
 //  update : Dapat membaca Jawaban 1st try 
-// Need upgrade : Data saat re-take saat menjalankan local host dan db untuk kedua kali belum bisa (saat relogin)
+//  NEW: Added QuizScore support
+//  FIXED: Cache dependency issues - now works without admin pre-answering
 
-// Add a cache for correct answers
+// Add a cache for correct answers (only for question display, not validation)
 const correctAnswersCache = {};
 
-// Helper functions for quiz transformation
+// Helper functions for quiz transformation (unchanged)
 const groupQuestionsByCategory = (questions) => {
   const groups = {};
   questions.forEach(question => {
@@ -42,7 +43,7 @@ const determineDifficulty = (questions) => {
 };
 
 const transformQuestion = (questionData) => {
-  // Find and cache the correct choice
+  // Find and cache the correct choice - only used for display purposes now
   const correctChoice = (questionData.choices || []).find(c => c.is_correct === true);
   if (correctChoice) {
     correctAnswersCache[questionData.id] = {
@@ -148,12 +149,13 @@ const mockAnswers = [
 ];
 
 const quizService = {
-  // Get cached correct answer by question ID
+  // Get cached correct answer by question ID - FOR DISPLAY ONLY, not validation
   getCorrectAnswer: (questionId) => {
+    console.warn(`⚠️ getCorrectAnswer called for question ${questionId} - this should only be used for display, not validation`);
     return correctAnswersCache[questionId] || null;
   },
   
-  // Get all cached correct answers
+  // Get all cached correct answers - FOR DISPLAY ONLY
   getAllCachedAnswers: () => {
     return {...correctAnswersCache};
   },
@@ -164,7 +166,7 @@ const quizService = {
       const response = await api.get('/questions', { params });
       console.log("Questions received:", response.data);
       
-      // Cache correct answers for all questions
+      // Cache correct answers for all questions (for display only)
       (response.data || []).forEach(question => transformQuestion(question));
       
       return response.data;
@@ -211,9 +213,10 @@ const quizService = {
     }
   },
 
+  // FIXED: Updated to trust backend and not rely on cache for validation
   submitAnswer: async (questionId, choiceId) => {
     try {
-      console.log(`Submitting answer - Question ID: ${questionId}, Choice ID: ${choiceId}`);
+      console.log(`🔍 SUBMIT_ANSWER: Starting - Question ID: ${questionId}, Choice ID: ${choiceId}`);
       
       // Ensure IDs are numbers
       const parsedQuestionId = parseInt(questionId, 10);
@@ -229,30 +232,35 @@ const quizService = {
         choice_id: parsedChoiceId
       };
       
-      console.log("Answer submission payload:", payload);
+      console.log("📤 SUBMIT_ANSWER: Payload being sent:", payload);
       
       const response = await api.post('/answers', payload);
-      console.log("Answer submission response:", response.data);
       
-      // If response doesn't include is_correct, check our cache to enhance the response
-      if (response.data && response.data.is_correct === undefined) {
-        const cachedAnswer = correctAnswersCache[parsedQuestionId];
-        if (cachedAnswer) {
-          response.data.is_correct = (Number(cachedAnswer.choiceId) === Number(parsedChoiceId));
-          console.log(`Adding is_correct from cache: ${response.data.is_correct}`);
+      console.log("📥 SUBMIT_ANSWER: Response data:", response.data);
+      console.log("📥 SUBMIT_ANSWER: Response status:", response.status);
+      
+      // VERIFY: Backend should provide is_correct
+      if (response.data.is_correct === undefined) {
+        console.warn("⚠️ Backend did not provide is_correct field - this might cause issues");
+        
+        // Only in development, try to use cache as fallback, but log a warning
+        if (process.env.NODE_ENV === 'development') {
+          const cachedAnswer = correctAnswersCache[parsedQuestionId];
+          if (cachedAnswer) {
+            console.warn("⚠️ Using cache as fallback (DEV ONLY) - this should be fixed in backend!");
+            response.data.is_correct = (Number(cachedAnswer.choiceId) === Number(parsedChoiceId));
+          }
         }
+      } else {
+        console.log(`✅ SUBMIT_ANSWER: Backend validation: is_correct=${response.data.is_correct}`);
       }
       
       return response.data;
     } catch (error) {
-      const errorData = error.response?.data;
-      console.error("API Error in submitAnswer:", errorData || error.message);
-      console.error("Request data that caused error:", {
-        question_id: questionId,
-        choice_id: choiceId
-      });
+      console.error("💥 SUBMIT_ANSWER: Error occurred:", error);
+      console.error("💥 SUBMIT_ANSWER: Error response:", error.response?.data);
       
-      // Try alternative format as fallback if the API expects different field names
+      // Error handling remains unchanged
       if (error.response?.status === 400) {
         try {
           console.log("Attempting alternative answer submission format...");
@@ -289,37 +297,32 @@ const quizService = {
     }
   },
 
+  // FIXED: Updated to trust backend data without cache enhancement
   getUserAnswers: async () => {
     try {
       console.log("Fetching user answers");
       const response = await api.get('/my-answers');
       console.log("User answers received:", response.data);
       
-      // Enhance the answers with correct answer info from cache
-      const enhancedAnswers = (response.data || []).map(answer => {
-        const questionId = answer.question_id;
-        const cached = correctAnswersCache[questionId];
-        
-        // If we have cached correct answer and this field is missing
-        if (cached && answer.is_correct === undefined) {
-          answer.is_correct = (Number(cached.choiceId) === Number(answer.choice_id));
-          console.log(`Enhanced answer for question ${questionId} with is_correct=${answer.is_correct}`);
-        }
-        
-        return answer;
-      });
+      // IMPROVED: Trust the backend data as-is without cache enhancement
+      const answers = response.data || [];
       
-      return enhancedAnswers;
+      // Just log if any answers are missing is_correct field
+      const missingCorrectness = answers.filter(a => a.is_correct === undefined).length;
+      if (missingCorrectness > 0) {
+        console.warn(`⚠️ WARNING: ${missingCorrectness} out of ${answers.length} answers missing is_correct field from backend`);
+      }
+      
+      return answers;
     } catch (error) {
       console.error("Error fetching user answers:", error.response?.data || error.message);
       
-      // If in development mode, return mock answers
+      // Development fallbacks remain the same
       if (process.env.NODE_ENV === 'development') {
         console.log("Using mock user answers");
         return mockAnswers;
       }
       
-      // If the API fails, return an empty array as fallback for the quiz to still work
       if (error.response?.status === 404 || error.response?.status === 400) {
         console.log("Returning empty answers array as fallback");
         return [];
@@ -329,7 +332,7 @@ const quizService = {
     }
   },
   
-  // NEW: Reset all answers for specific questions
+  // Remaining functions unchanged...
   resetQuizAnswers: async (questionIds) => {
     try {
       console.log("Raw questionIds received:", questionIds);
@@ -407,7 +410,72 @@ const quizService = {
     }
   },
 
-  // NEW: Start fresh quiz (reset + prepare)
+  submitQuizScore: async (quizId, score, totalQuestions, correctAnswers) => {
+    try {
+      console.log(`📊 SUBMIT_QUIZ_SCORE: Quiz ${quizId} - Score: ${score}, Correct: ${correctAnswers}/${totalQuestions}`);
+      
+      const payload = {
+        quiz_id: parseInt(quizId, 10),
+        score: parseFloat(score),
+        total_questions: parseInt(totalQuestions, 10),
+        correct_answers: parseInt(correctAnswers, 10)
+      };
+      
+      console.log("📤 Quiz score payload:", payload);
+      
+      const response = await api.post('/quiz-scores', payload);
+      console.log("✅ Quiz score submitted:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("💥 Error submitting quiz score:", error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  getMyQuizScores: async () => {
+    try {
+      console.log("🔍 Fetching user quiz scores");
+      const response = await api.get('/my-quiz-scores');
+      console.log("📊 Quiz scores received:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("💥 Error fetching quiz scores:", error.response?.data || error.message);
+      return [];
+    }
+  },
+
+  getMyQuizScore: async (quizId) => {
+    try {
+      console.log(`🔍 Fetching score for quiz ${quizId}`);
+      const response = await api.get(`/my-quiz-score/${quizId}`);
+      console.log("📊 Quiz score received:", response.data);
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        console.log(`📭 No score found for quiz ${quizId}`);
+        return null;
+      }
+      console.error("💥 Error fetching quiz score:", error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  resetQuizScore: async (quizId) => {
+    try {
+      console.log(`🔄 Resetting score for quiz ${quizId}`);
+      const response = await api.delete(`/my-quiz-score/${quizId}`);
+      console.log("✅ Quiz score reset:", response.data);
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        console.log(`📭 No score to reset for quiz ${quizId}`);
+        return { success: true, message: 'No existing score to reset' };
+      }
+      console.error("💥 Error resetting quiz score:", error.response?.data || error.message);
+      throw error;
+    }
+  },
+
   startFreshQuiz: async (quizId) => {
     try {
       // Ensure quizId is a number
@@ -416,7 +484,7 @@ const quizService = {
         throw new Error(`Invalid quiz ID: ${quizId}`);
       }
       
-      console.log(`Starting fresh quiz ${id}`);
+      console.log(`🔄 Starting fresh quiz ${id}`);
       
       // Get quiz details
       const quiz = await quizService.getQuizById(id);
@@ -458,19 +526,26 @@ const quizService = {
             resetCount: 0,
             results: []
           },
+          scoreResetResult: { success: true, message: 'No score to reset' },
           message: 'Quiz has no questions to reset'
         };
       }
       
-      // Reset all previous answers for this quiz
-      const resetResult = await quizService.resetQuizAnswers(questionIds);
-      console.log("Quiz reset result:", resetResult);
+      // Reset both individual answers AND quiz score in parallel
+      const [resetResult, scoreResetResult] = await Promise.all([
+        quizService.resetQuizAnswers(questionIds),
+        quizService.resetQuizScore(id)
+      ]);
+      
+      console.log("Quiz answers reset result:", resetResult);
+      console.log("Quiz score reset result:", scoreResetResult);
       
       return {
         success: true,
         quiz,
         resetResult,
-        message: `Quiz prepared: ${resetResult.resetCount} previous answers cleared`
+        scoreResetResult,
+        message: `Quiz prepared: ${resetResult.resetCount} answers cleared, score reset`
       };
     } catch (error) {
       console.error("Error starting fresh quiz:", error);
@@ -478,7 +553,6 @@ const quizService = {
     }
   },
   
-  // Updated method to get quizzes from API first
   getQuizzes: async () => {
     try {
       console.log("Fetching quizzes from API");
@@ -553,7 +627,6 @@ const quizService = {
     }
   },
   
-  // Updated method to get a specific quiz by ID from API first
   getQuizById: async (quizId) => {
     try {
       // Ensure quizId is a number
@@ -628,7 +701,6 @@ const quizService = {
     }
   },
   
-  // Add new createQuiz method using direct API call
   createQuiz: async (quizData) => {
     try {
       console.log("Creating quiz with data:", quizData);
@@ -651,7 +723,6 @@ const quizService = {
     }
   },
 
-  // Update quiz
   updateQuiz: async (quizId, quizData) => {
     try {
       const id = parseInt(quizId, 10);
@@ -669,7 +740,6 @@ const quizService = {
     }
   },
 
-  // Delete quiz
   deleteQuiz: async (quizId) => {
     try {
       const id = parseInt(quizId, 10);
@@ -686,8 +756,34 @@ const quizService = {
       throw error;
     }
   },
+
+  debugDatabaseAnswers: async () => {
+    try {
+      console.log("🔍 DEBUG: Checking all user answers");
+      const response = await api.get('/my-answers');
+      
+      console.log("📊 DEBUG: Raw database response:", response.data);
+      
+      if (response.data && response.data.length > 0) {
+        response.data.forEach((answer, index) => {
+          console.log(`📝 DEBUG Answer ${index + 1}:`, {
+            id: answer.id,
+            user_id: answer.user_id,
+            question_id: answer.question_id,
+            choice_id: answer.choice_id,
+            score: answer.score,
+            is_correct: answer.is_correct,
+            created_at: answer.created_at
+          });
+        });
+      } else {
+        console.log("📭 DEBUG: No answers found");
+      }
+    } catch (error) {
+      console.error("💥 DEBUG: Error fetching answers:", error);
+    }
+  },
   
-  // Mock submission for testing when the real API fails
   mockSubmitAnswer: async (questionId, choiceId) => {
     console.log("Using mock answer submission");
     // Simulate API delay

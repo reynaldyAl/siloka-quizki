@@ -9,7 +9,7 @@ import logging
 import schemas
 import crud
 import auth
-from database import get_db, User
+from database import get_db, User, QuizScore
 
 app = FastAPI(title="QuizKi API", description="Quiz Application API", version="1.0.0")
 
@@ -195,7 +195,6 @@ def delete_question(
         logger.error(f"Error deleting question {question_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Error deleting question")
 
-# Enhanced Answer endpoints
 @app.post("/answers", response_model=schemas.AnswerResponse)
 def submit_answer(
     answer: schemas.AnswerCreate,
@@ -209,19 +208,26 @@ def submit_answer(
     existing_answer = crud.get_user_answer_for_question(db, user_id=current_user.id, question_id=answer.question_id)
     if existing_answer:
         logger.info(f"User {current_user.id} already answered question {answer.question_id}")
-        raise HTTPException(
-            status_code=400, 
-            detail=f"You have already answered this question. Your previous answer was choice {existing_answer.choice_id}."
-        )
+        
+        # Delete the previous answer instead of rejecting it
+        crud.delete_user_answer(db, user_id=current_user.id, question_id=answer.question_id)
+        logger.info(f"Deleted previous answer for question {answer.question_id}")
     
     # Verify that the choice belongs to the question
     choice = crud.get_choice(db, choice_id=answer.choice_id)
     if not choice or choice.question_id != answer.question_id:
         raise HTTPException(status_code=400, detail="Invalid choice for this question")
     
-    db_answer = crud.create_answer(db=db, answer=answer, user_id=current_user.id)
+    # Fixed function parameters
+    db_answer = crud.create_answer(
+        db=db,
+        user_id=current_user.id,
+        question_id=answer.question_id, 
+        choice_id=answer.choice_id
+    )
+    
     if db_answer is None:
-        raise HTTPException(status_code=400, detail="Failed to create answer")
+        raise HTTPException(status_code=500, detail="Failed to create answer")
     
     return db_answer
 
@@ -331,6 +337,70 @@ def delete_quiz(
     if db_quiz is None:
         raise HTTPException(status_code=404, detail="Quiz not found")
     return {"message": "Quiz deleted successfully"}
+
+# NEW: QuizScore Endpoints
+@app.post("/quiz-scores", response_model=schemas.QuizScoreResponse)
+def submit_quiz_score(
+    quiz_score: schemas.QuizScoreCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth.get_current_user)
+):
+    """Submit/Update a quiz completion score"""
+    logger.info(f"Quiz score submission: user={current_user.id}, quiz={quiz_score.quiz_id}")
+    
+    result = crud.create_quiz_score(
+        db=db, 
+        user_id=current_user.id,
+        quiz_id=quiz_score.quiz_id,
+        score=quiz_score.score,
+        total_questions=quiz_score.total_questions,
+        correct_answers=quiz_score.correct_answers
+    )
+    
+    if not result:
+        raise HTTPException(status_code=400, detail="Failed to create quiz score")
+    
+    return result
+
+@app.get("/my-quiz-scores", response_model=List[schemas.QuizScoreResponse])
+def get_my_quiz_scores(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth.get_current_user)
+):
+    """Get all quiz scores for the current user"""
+    return crud.get_user_quiz_scores(db, user_id=current_user.id)
+
+@app.get("/quiz-scores/{quiz_id}", response_model=List[schemas.QuizScoreResponse])
+def get_quiz_leaderboard(
+    quiz_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get leaderboard for a specific quiz"""
+    return crud.get_quiz_scores(db, quiz_id=quiz_id)
+
+@app.get("/my-quiz-score/{quiz_id}", response_model=schemas.QuizScoreResponse)
+def get_my_quiz_score(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth.get_current_user)
+):
+    """Get user's score for a specific quiz"""
+    score = crud.get_user_quiz_score(db, user_id=current_user.id, quiz_id=quiz_id)
+    if not score:
+        raise HTTPException(status_code=404, detail="Quiz score not found")
+    return score
+
+@app.delete("/my-quiz-score/{quiz_id}")
+def reset_my_quiz_score(
+    quiz_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth.get_current_user)
+):
+    """Reset user's quiz score (for complete retake)"""
+    result = crud.delete_quiz_score(db, user_id=current_user.id, quiz_id=quiz_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Quiz score not found")
+    return {"message": f"Quiz score for quiz {quiz_id} has been reset"}
 
 # OPTIONS endpoints
 @app.options("/quizzes", include_in_schema=False)
