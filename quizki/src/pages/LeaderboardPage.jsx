@@ -1,4 +1,4 @@
-// pages/LeaderboardPage.jsx with position fix
+// pages/LeaderboardPage.jsx - Fixed duplicate user issue
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -62,19 +62,34 @@ const LeaderboardPage = () => {
         const usersResponse = await api.get('/users');
         console.log("Fetched users data:", usersResponse.data);
         
-        // If we have current user data but they're not in the leaderboard, add them
+        // If we have current user data, mark them in the leaderboard instead of adding a duplicate
         let usersData = [...usersResponse.data];
         
         if (userData) {
-          // Check if user exists in the leaderboard
-          const userExists = usersData.some(u => String(u.id) === String(userData.id));
-          console.log("User exists in leaderboard:", userExists);
+          // Ensure IDs are strings for consistent comparison
+          const currentUserId = String(userData.id);
+          const currentUsername = userData.username;
           
-          // If user doesn't exist in the leaderboard, add them
-          if (!userExists) {
+          // Mark the current user entry rather than adding a separate entry
+          let userFound = false;
+          
+          usersData = usersData.map(user => {
+            // Match by ID or username to be extra safe
+            if (String(user.id) === currentUserId || user.username === currentUsername) {
+              userFound = true;
+              return { ...user, isCurrentUser: true };
+            }
+            return user;
+          });
+          
+          console.log("User found in leaderboard:", userFound);
+          
+          // Only add the user if they're truly not in the list
+          if (!userFound) {
             console.log("Adding current user to leaderboard data");
             usersData.push({
               ...userData,
+              isCurrentUser: true,
               total_score: userData.total_score || 0
             });
             
@@ -96,21 +111,21 @@ const LeaderboardPage = () => {
     fetchData();
   }, [timeFilter]); // Re-fetch when time filter changes
 
-  // Find current user's rank in the leaderboard - FIXED to ensure a position
+  // Find current user's rank in the leaderboard
   const getCurrentUserRank = () => {
     if (!currentUser || !users.length) {
       console.log("Cannot determine rank: currentUser or users list is empty");
       return null;
     }
     
-    // Convert IDs to strings for comparison to avoid type mismatch issues
+    // Find user by either ID or the isCurrentUser flag
     const currentUserId = String(currentUser.id);
+    const userIndex = users.findIndex(user => 
+      String(user.id) === currentUserId || 
+      user.username === currentUser.username ||
+      user.isCurrentUser === true
+    );
     
-    // Log all user IDs to help diagnose the problem
-    console.log("Current user ID:", currentUserId);
-    console.log("Available user IDs:", users.map(u => String(u.id)));
-    
-    const userIndex = users.findIndex(user => String(user.id) === currentUserId);
     console.log("Found user index:", userIndex);
     
     if (userIndex !== -1) {
@@ -354,7 +369,7 @@ const LeaderboardPage = () => {
             )}
           </div>
           
-          {/* Display user's rank if logged in - FIXED to always show a position */}
+          {/* Display user's rank if logged in */}
           {currentUser && (
             <div className="cosmic-user-card mb-8">
               <div className="cosmic-user-heading">Your Ranking</div>
@@ -431,11 +446,15 @@ const LeaderboardPage = () => {
                 <tbody className="divide-y divide-blue-900/30">
                   {users.map((user, index) => {
                     const badge = getBadgeForScore(user.total_score);
-                    const isCurrentUser = currentUser && String(user.id) === String(currentUser.id);
+                    // Use isCurrentUser flag or check by ID/username
+                    const isCurrentUser = user.isCurrentUser || 
+                      (currentUser && 
+                       (String(user.id) === String(currentUser.id) || 
+                        user.username === currentUser.username));
                     
                     return (
                       <tr 
-                        key={user.id} 
+                        key={`user-${user.id || index}`} 
                         className={`
                           cosmic-table-row
                           ${isCurrentUser ? 'cosmic-table-row-highlight' : ''}

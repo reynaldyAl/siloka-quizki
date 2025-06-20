@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../contexts/AuthContext'; // Make sure this path is correct
 import './Navbar.css';
 
 const Navbar = () => {
@@ -9,19 +10,26 @@ const Navbar = () => {
   const [showNavbar, setShowNavbar] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isRocketLaunched, setIsRocketLaunched] = useState(false);
-  const [user, setUser] = useState(null);
+  
+  // IMPORTANT: Use the auth context
+  const { user, logout, isAuthenticated } = useAuth();
   
   const location = useLocation();
+  const navigate = useNavigate();
   const dropdownRef = useRef(null);
   const rocketRef = useRef(null);
   
-  // Check if user is logged in
+  // Debug logging
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
+    console.log("Navbar auth state:", { 
+      isAuthenticated, 
+      user: user ? { 
+        username: user.username,
+        name: user.name,
+        role: user.role 
+      } : null 
+    });
+  }, [isAuthenticated, user]);
   
   // Handle scroll effect for navbar
   useEffect(() => {
@@ -55,10 +63,26 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
   
+  // Listen for auth-logout event
+  useEffect(() => {
+    const handleAuthLogout = () => {
+      setIsDropdownOpen(false);
+      setIsMenuOpen(false);
+    };
+    
+    window.addEventListener('auth-logout', handleAuthLogout);
+    return () => {
+      window.removeEventListener('auth-logout', handleAuthLogout);
+    };
+  }, []);
+  
+  // Improved logout handler
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    setUser(null);
+    console.log("Logout button clicked");
     setIsDropdownOpen(false);
+    setIsMenuOpen(false);
+    logout();
+    navigate('/');
   };
   
   const toggleDropdown = () => {
@@ -74,11 +98,12 @@ const Navbar = () => {
 
   const toggleLogoAnimation = () => {
     const planet = document.querySelector('.planet-logo');
-    planet.classList.add('pulse-animation');
-    
-    setTimeout(() => {
-      planet.classList.remove('pulse-animation');
-    }, 1000);
+    if (planet) {
+      planet.classList.add('pulse-animation');
+      setTimeout(() => {
+        planet.classList.remove('pulse-animation');
+      }, 1000);
+    }
   };
   
   return (
@@ -87,7 +112,7 @@ const Navbar = () => {
         space-navbar 
         ${isScrolled ? 'bg-opacity-90 backdrop-blur-sm' : ''} 
         ${showNavbar ? 'translate-y-0' : '-translate-y-full'}
-        transition-transform duration-300 ease-in-out fixed w-full top-0 
+        transition-transform duration-300 ease-in-out fixed w-full top-0 z-50
       `}
     >
       {/* Star background layers */}
@@ -138,7 +163,7 @@ const Navbar = () => {
               <span>Quizzes</span>
             </Link>
             
-            {/* New Leaderboard link for desktop */}
+            {/* Leaderboard link for desktop */}
             <Link to="/leaderboard" className={`nav-link ${location.pathname === '/leaderboard' ? 'active' : ''}`}>
               <div className="nav-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -148,7 +173,8 @@ const Navbar = () => {
               <span>Leaderboard</span>
             </Link>
             
-            {user ? (
+            {/* Dynamic menu based on authentication */}
+            {isAuthenticated && user ? (
               <>
                 <Link to="/dashboard" className={`nav-link ${location.pathname === '/dashboard' ? 'active' : ''}`}>
                   <div className="nav-icon">
@@ -174,13 +200,13 @@ const Navbar = () => {
                   {isDropdownOpen && (
                     <div className="space-dropdown">
                       <div className="dropdown-stars"></div>
-                      <Link to="/profile" className="dropdown-item">
+                      <Link to="/profile" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                         Profile
                       </Link>
-                      <Link to="/settings" className="dropdown-item">
+                      <Link to="/settings" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -262,7 +288,7 @@ const Navbar = () => {
               Quizzes
             </Link>
             
-            {/* New Leaderboard link for mobile */}
+            {/* Leaderboard link for mobile */}
             <Link 
               to="/leaderboard"
               className={`mobile-menu-item ${location.pathname === '/leaderboard' ? 'active' : ''}`}
@@ -274,7 +300,8 @@ const Navbar = () => {
               Leaderboard
             </Link>
             
-            {user ? (
+            {/* Dynamic mobile menu based on authentication */}
+            {isAuthenticated && user ? (
               <>
                 <Link 
                   to="/dashboard"
@@ -297,10 +324,7 @@ const Navbar = () => {
                   Profile
                 </Link>
                 <button 
-                  onClick={() => {
-                    handleLogout();
-                    setIsMenuOpen(false);
-                  }}
+                  onClick={handleLogout}
                   className="mobile-menu-item text-red-400"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">

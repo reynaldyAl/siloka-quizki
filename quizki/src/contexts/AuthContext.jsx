@@ -1,5 +1,6 @@
+// src/contexts/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import authService from '../services/authService';
+import api from '../services/api';
 
 // Create the context
 const AuthContext = createContext();
@@ -19,11 +20,13 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Initialize auth state and set up event listener for storage changes
+  // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Check for both token and user data
+        console.log("Initializing auth state...");
+        
+        // Check for token and user data
         const token = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
         
@@ -31,11 +34,11 @@ export const AuthProvider = ({ children }) => {
         
         if (token) {
           try {
-            // Try to get current user info with the token
+            // Parse stored user if available
             const userData = storedUser ? JSON.parse(storedUser) : null;
-            setUser(userData || { username: 'User' }); // Set basic user if no stored data
+            setUser(userData);
             setIsAuthenticated(true);
-            console.log("Auth initialized with token and user data");
+            console.log("Auth initialized with user data:", userData?.username);
           } catch (err) {
             console.error('Failed to parse user data:', err);
             localStorage.removeItem('user');
@@ -46,6 +49,7 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('user');
           setUser(null);
           setIsAuthenticated(false);
+          console.log("No token found, user is not authenticated");
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
@@ -58,12 +62,12 @@ export const AuthProvider = ({ children }) => {
     // Listen for storage events (logout from another tab)
     const handleStorageChange = (e) => {
       if (e.key === 'token' || e.key === 'user') {
+        console.log("Storage change detected for:", e.key);
         initAuth();
       }
     };
     
     window.addEventListener('storage', handleStorageChange);
-    
     initAuth();
     
     // Clean up event listener
@@ -72,50 +76,47 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+  // Login function that works with your API
   const login = async (username, password) => {
+    console.log("AuthContext login called with username:", username);
     setLoading(true);
     setError(null);
+    
     try {
-      console.log("Attempting login for:", username);
+      // Make API call to login endpoint
+      const response = await api.post('/login', {
+        username,
+        password
+      });
       
-      // Development mode check
-      const isDevelopmentMode = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+      console.log("Login API response:", response.data);
       
-      // Use mock login in development if API is not available
-      if (isDevelopmentMode && (username === 'admin' || username === 'test')) {
-        console.log("Using development fallback login");
-        await new Promise(resolve => setTimeout(resolve, 500));
+      // Save auth token to localStorage
+      if (response.data.access_token) {
+        localStorage.setItem('token', response.data.access_token);
         
-        // Generate mock token and user
-        const mockToken = "dev-token-" + Math.random().toString(36).substring(2);
-        const userData = { 
-          username, 
-          name: username === 'admin' ? 'Administrator' : 'Test User',
-          role: username === 'admin' ? 'admin' : 'user'
-        };
-        
-        // Store both token and user data
-        localStorage.setItem('token', mockToken);
-        localStorage.setItem('user', JSON.stringify(userData));
-        
-        setUser(userData);
-        setIsAuthenticated(true);
-        console.log("Development login successful", { token: mockToken, user: userData });
-        return userData;
+        // Get user profile data
+        try {
+          const profileResponse = await api.get('/me');
+          console.log('User profile data:', profileResponse.data);
+          
+          // Save user data to localStorage and state
+          const userData = profileResponse.data;
+          localStorage.setItem('user', JSON.stringify(userData));
+          
+          // Update context state
+          setUser(userData);
+          setIsAuthenticated(true);
+          
+          console.log("Login successful, user state updated:", userData.username);
+          return userData;
+        } catch (profileErr) {
+          console.error('Could not fetch profile data:', profileErr);
+          throw new Error('Failed to fetch user profile');
+        }
+      } else {
+        throw new Error('No access token received from server');
       }
-      
-      // Try the real API login
-      const response = await authService.login(username, password);
-      console.log("Login API response:", response);
-      
-      // Make sure we have a user object
-      const userData = response.user || { username, name: username };
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-      setIsAuthenticated(true);
-      
-      console.log("Login successful, token and user data saved");
-      return userData;
     } catch (err) {
       console.error("Login error:", err);
       setError(err.message || 'Login failed. Please check your credentials.');
@@ -126,21 +127,26 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    try {
-      authService.logout(); // This will remove the token
-    } catch (err) {
-      console.error("Logout API error:", err);
-    }
+    console.log("Logout function called");
     
-    // Always clear local storage even if API fails
+    // Clear local storage
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    
+    // Update context state
     setUser(null);
     setIsAuthenticated(false);
     
     // Dispatch custom event for components to listen to
-    window.dispatchEvent(new Event('auth-logout'));
-    console.log("Logged out, auth data cleared");
+    try {
+      window.dispatchEvent(new CustomEvent('auth-logout'));
+      console.log("Logged out, auth data cleared, custom event dispatched");
+    } catch (e) {
+      // Fallback for older browsers
+      const event = document.createEvent('Event');
+      event.initEvent('auth-logout', true, true);
+      window.dispatchEvent(event);
+    }
   };
 
   return (
