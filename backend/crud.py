@@ -363,10 +363,18 @@ def update_quiz(db: Session, quiz_id: int, quiz: schemas.QuizUpdate):
     return None
 
 def delete_quiz(db: Session, quiz_id: int):
+    # First, delete related quiz scores
+    db.query(QuizScore).filter(QuizScore.quiz_id == quiz_id).delete()
+    
+    # Next, delete quiz questions relationship records
+    db.query(QuizQuestion).filter(QuizQuestion.quiz_id == quiz_id).delete()
+    
+    # Finally, delete the quiz itself
     db_quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
     if db_quiz:
         db.delete(db_quiz)
-        db.commit()
+        
+    db.commit()
     return db_quiz
 
 def get_quiz_with_questions(db: Session, quiz_id: int):

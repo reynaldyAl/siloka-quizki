@@ -1,9 +1,9 @@
-// pages/auth/LoginPage.jsx
+// src/pages/auth/LoginPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Button from '../../components/common/Button/Button';
 import Navbar from '../../components/common/Navbar/Navbar';
-import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext'; // Import useAuth
 import './LoginPage.css';
 
 const LoginPage = () => {
@@ -15,6 +15,7 @@ const LoginPage = () => {
   
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth(); // Get login function from auth context
 
   // Check for success message from registration
   useEffect(() => {
@@ -48,39 +49,17 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      console.log('Authenticating user:', username);
+      console.log('Authenticating user via AuthContext:', username);
       
-      // Make API call to login endpoint
-      const response = await api.post('/login', {
-        username: username,
-        password: password
-      });
+      // Use AuthContext login function instead of direct API call
+      await login(username, password);
       
-      console.log('Login successful:', response.data);
+      console.log('Login successful via AuthContext, navigating to dashboard');
       
-      // Save auth token to localStorage
-      if (response.data.access_token) {
-        localStorage.setItem('token', response.data.access_token);
-        
-        // Get user profile data
-        try {
-          const profileResponse = await api.get('/me');
-          console.log('User profile data:', profileResponse.data);
-          
-          // Save user data to localStorage
-          localStorage.setItem('user', JSON.stringify(profileResponse.data));
-        } catch (profileErr) {
-          console.warn('Could not fetch profile data:', profileErr);
-          
-          // Save minimal user data if profile fetch fails
-          localStorage.setItem('user', JSON.stringify({ username }));
-        }
-        
-        // Navigate to dashboard
-        navigate('/dashboard');
-      } else {
-        throw new Error('No access token received from server');
-      }
+      // Navigate to dashboard or the page user was trying to access
+      const from = location.state?.from || "/dashboard";
+      navigate(from);
+      
     } catch (err) {
       console.error('Login error:', err);
       
@@ -92,7 +71,7 @@ const LoginPage = () => {
         } else if (err.response.status === 422) {
           setError('Invalid login format. Please check your credentials.');
         } else {
-          setError(err.response.data.detail || 'Login failed. Please try again.');
+          setError(err.response.data?.detail || 'Login failed. Please try again.');
         }
       } else if (err.request) {
         // No response received
@@ -233,7 +212,7 @@ const LoginPage = () => {
           <div className="social-login">
             <button type="button" className="social-button twitter">
               <svg fill="currentColor" viewBox="0 0 20 20">
-                <path d="M6.29 18.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0020 3.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.073 4.073 0 01.8 7.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 010 16.407a11.616 11.616 0 006.29 1.84" />
+                <path d="M6.29 18.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0020 3.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27a8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.073 4.073 0 01.8 7.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 010 16.407a11.616 11.616 0 006.29 1.84" />
               </svg>
             </button>
             
