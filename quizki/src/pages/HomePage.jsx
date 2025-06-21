@@ -299,9 +299,22 @@ const HomePage = () => {
                     <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-yellow-300 transition-colors">{quiz.title}</h3>
                     <p className="text-gray-400 mb-6 text-base leading-relaxed flex-grow">{quiz.description}</p> {/* Added flex-grow */}
                     <Link to="/login" className="mt-auto"> {/* Added mt-auto to push button to bottom */}
-                      <button className="w-full py-3 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors duration-300 transform group-hover:scale-105 shadow-md">
+                      <button
+                        className="w-full py-3 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors duration-300 transform group-hover:scale-105 shadow-md"
+                        onClick={() => {
+                          const user = localStorage.getItem('user');
+                          if (user) {
+                            // Sudah login, arahkan ke halaman quiz
+                            window.location.href = '/quizzes';
+                          } else {
+                            // Belum login, arahkan ke halaman login
+                            window.location.href = '/login';
+                          }
+                        }}
+                      >
                         Start Quiz
                       </button>
+
                     </Link>
                   </div>
                   {/* === END PERUBAHAN UTAMA DI SINI === */}
