@@ -201,7 +201,7 @@ const HomePage = () => {
                 description: "Fundamental scientific concepts across physics, chemistry, and biology.",
                 image: "https://images.unsplash.com/photo-1507413245164-6160d8298b31?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
                 difficulty: "Beginner",
-                questions: 25,
+                questions: "No",
                 category: "science",
                 gradient: "from-green-500 to-teal-500" // Added gradient for card hover
               },
@@ -210,7 +210,7 @@ const HomePage = () => {
                 description: "Major global historical events, figures, and eras.",
                 image: "https://images.unsplash.com/photo-1461360370896-922624d12aa1?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
                 difficulty: "Intermediate",
-                questions: 30,
+                questions: "No",
                 category: "history",
                 gradient: "from-amber-500 to-orange-500"
               },
@@ -219,7 +219,7 @@ const HomePage = () => {
                 description: "Core concepts of coding, algorithms, and data structures.",
                 image: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
                 difficulty: "Advanced",
-                questions: 20,
+                questions: "No",
                 category: "technology",
                 gradient: "from-indigo-500 to-blue-500"
               },
@@ -228,16 +228,16 @@ const HomePage = () => {
                 description: "Iconic artworks, movements, and artists through history.",
                 image: "https://images.unsplash.com/photo-1580136579312-94651dfd596d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
                 difficulty: "Intermediate",
-                questions: 15,
+                questions: "No",
                 category: "arts",
                 gradient: "from-pink-500 to-rose-500"
               },
               {
                 title: "Olympic Games History",
                 description: "Facts and events from ancient to modern Olympic games.",
-                image: "https://images.unsplash.com/photo-1569517282132-25d22f4573e6?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+                image: "https://plus.unsplash.com/premium_photo-1713102867179-467de3e1b0fb?q=80&w=1169&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
                 difficulty: "Beginner",
-                questions: 25,
+                questions: "No",
                 category: "sports",
                 gradient: "from-lime-500 to-emerald-500"
               },
@@ -246,25 +246,25 @@ const HomePage = () => {
                 description: "Key achievements, missions, and figures in space travel.",
                 image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
                 difficulty: "Advanced",
-                questions: 35,
+                questions: "No",
                 category: "science",
                 gradient: "from-sky-500 to-cyan-500"
               },
               {
                 title: "Literary Classics",
                 description: "Authors, plots, and themes from timeless novels and poems.",
-                image: "https://images.unsplash.com/photo-1521587765099-efb676239188?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+                image: "https://images.unsplash.com/photo-1693627121296-809fc35e36b7?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
                 difficulty: "Intermediate",
-                questions: 20,
+                questions: "No",
                 category: "literature",
                 gradient: "from-red-500 to-purple-500"
               },
               {
                 title: "World Geography",
                 description: "Capitals, countries, landmarks, and physical geography.",
-                image: "https://images.unsplash.com/photo-1481349518771-2fd5957b75ae?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+                image: "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
                 difficulty: "Beginner",
-                questions: 30,
+                questions: "No",
                 category: "geography",
                 gradient: "from-teal-500 to-blue-500"
               },
@@ -279,7 +279,8 @@ const HomePage = () => {
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-115" // Stronger scale on hover
                     />
                   </div>
-                  <div className="p-6 relative z-10">
+                  {/* === START PERUBAHAN UTAMA DI SINI === */}
+                  <div className="p-6 relative z-10 flex flex-col h-[calc(100%-12rem)]"> {/* Added flex flex-col and defined a height */}
                     <div className="flex justify-between items-center mb-4">
                       <span className={`px-3 py-1.5 text-sm font-semibold rounded-full shadow-md ${ // Increased padding, rounded-full
                         quiz.difficulty === 'Beginner' ? 'bg-green-600 text-white' : // Solid colors for difficulty
@@ -296,13 +297,14 @@ const HomePage = () => {
                       </span>
                     </div>
                     <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-yellow-300 transition-colors">{quiz.title}</h3>
-                    <p className="text-gray-400 mb-6 text-base leading-relaxed">{quiz.description}</p>
-                    <Link to="/login">
+                    <p className="text-gray-400 mb-6 text-base leading-relaxed flex-grow">{quiz.description}</p> {/* Added flex-grow */}
+                    <Link to="/login" className="mt-auto"> {/* Added mt-auto to push button to bottom */}
                       <button className="w-full py-3 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors duration-300 transform group-hover:scale-105 shadow-md">
                         Start Quiz
                       </button>
                     </Link>
                   </div>
+                  {/* === END PERUBAHAN UTAMA DI SINI === */}
                 </div>
               ))
             }
