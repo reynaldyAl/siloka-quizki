@@ -60,6 +60,7 @@
   margin-bottom: 0.5rem;
   background: linear-gradient(135deg, #ffffff, #a5b4fc);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
   letter-spacing: -0.025em;
