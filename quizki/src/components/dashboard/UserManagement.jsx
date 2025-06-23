@@ -51,7 +51,7 @@ const UserManagement = ({ users, loading }) => {
                 </td>
                 <td className="p-3">
                   <Link 
-                    to={`/admin/users/${user.id}`} 
+                    to={`/profile/${user.id}`} 
                     className="text-blue-400 hover:text-blue-300"
                   >
                     View
