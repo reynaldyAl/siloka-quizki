@@ -280,8 +280,8 @@ siloka-quizki/
 
 - [reynaldyAl](https://github.com/reynaldyAl) - Project Lead
 - [A. M. YUSRAN MAZIDAN](https://github.com/Yousran)
-- [REZKY ROBBYYANTO AKBARI](https://github.com/)
-- [A.MUH. MUFLIH HANIFATUSSURUR](https://github.com/)
+- [REZKY ROBBYYANTO AKBARI](https://github.com/RezkyRobby)
+- [A.MUH. MUFLIH HANIFATUSSURUR](https://github.com/MvLx)
 
 ## 📜 Lisensi
 
