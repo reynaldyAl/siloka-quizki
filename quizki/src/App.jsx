@@ -25,6 +25,7 @@ import CreateQuestionPage from './pages/admin/CreateQuestionPage';
 import EditQuestionPage from './pages/admin/EditQuestionPage';
 import CreateQuizPage from './pages/admin/CreateQuizPage';
 import EditQuizPage from './pages/admin/EditQuizPage';
+import UserProfilePage from './pages/profile/UserProfilePage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
@@ -88,6 +89,12 @@ function App() {
                 <ProtectedRoute>
                   <ProfilePage />
                 </ProtectedRoute>
+              } />
+
+              <Route path="/profile/:userId" element={
+              <ProtectedRoute requireAdmin={true}>
+                <UserProfilePage />
+              </ProtectedRoute>
               } />
               
               {/* Leaderboard Route */}

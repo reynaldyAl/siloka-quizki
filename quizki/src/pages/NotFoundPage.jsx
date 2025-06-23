@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/common/Navbar/Navbar';
-import Button from '../components/common/Button/Button';
 import './NotFoundPage.css';
 
 const NotFoundPage = () => {
@@ -21,16 +20,7 @@ const NotFoundPage = () => {
       
       <div className="not-found-content">
         <div className="not-found-card">
-          <div className="lost-astronaut">
-            <div className="astronaut-helmet"></div>
-            <div className="astronaut-body"></div>
-            <div className="astronaut-jetpack"></div>
-            <div className="astronaut-arms left"></div>
-            <div className="astronaut-arms right"></div>
-            <div className="astronaut-legs left"></div>
-            <div className="astronaut-legs right"></div>
-          </div>
-          
+          {/* Astronaut removed */}
           <h1 className="not-found-title">
             <span className="gradient-text">404</span>
           </h1>
@@ -46,21 +36,14 @@ const NotFoundPage = () => {
           
           <div className="not-found-actions">
             <Link to="/">
-              <Button
-                variant="primary"
-                theme="space"
-                size="large"
-              >
+              <button className="notfound-btn">
                 Return to Home Base
-              </Button>
+              </button>
             </Link>
             <Link to="/quizzes">
-              <Button
-                variant="secondary"
-                theme="space"
-              >
+              <button className="notfound-btn">
                 Explore Quizzes
-              </Button>
+              </button>
             </Link>
           </div>
         </div>
