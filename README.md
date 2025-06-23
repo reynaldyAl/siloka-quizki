@@ -250,7 +250,7 @@ siloka-quizki/
 - [Git Cheat Sheet](https://education.github.com/git-cheat-sheet-education.pdf)
 - [Conventional Commits](https://www.conventionalcommits.org/)
 
-## 🤝 Anggota Tim
+## Anggota Tim
 
 - [reynaldyAl](https://github.com/reynaldyAl) - Project Lead
 - [A. M. YUSRAN MAZIDAN](https://github.com/Yousran)
@@ -258,5 +258,7 @@ siloka-quizki/
 - [A.MUH. MUFLIH HANIFATUSSURUR](https://github.com/)
 
 ## 📜 Lisensi
+
+## STATUS : DONE
 
 Proyek ini dilisensikan di bawah Lisensi MIT - lihat file LICENSE untuk detailnya.
