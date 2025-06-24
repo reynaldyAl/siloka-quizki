@@ -472,6 +472,21 @@ async def options_my_answers():
 async def options_users():
     return {}
 
+@app.on_event("startup")
+def create_admin_user():
+    db = next(get_db())
+    admin = crud.get_user_by_username(db, "admin")
+    if not admin:
+        from schemas import UserCreate
+        admin_user = UserCreate(
+            username="admin",
+            email="admin@example.com",
+            password="admin123",  
+            role="admin"
+        )
+        crud.create_user(db, admin_user)
+        logger.info("Admin user created.")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
