@@ -326,13 +326,20 @@ const AdminDashboard = ({ user, questions }) => {
           
           {activeTab === 'questions' && (
             <>
-              <h2 className="text-2xl font-bold text-white mb-6">Question Management</h2>
-              <QuestionFilter 
-                onFilterChange={setQuestionFilters} 
-                categories={questionCategories}
-              />
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-white">Question Management</h2>
+                <button 
+                  onClick={handleCreateQuestion}
+                  className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap"
+                >
+                  Add New
+                </button>
+              </div>
               <div className="mt-4">
-                <QuestionManagement questions={filteredQuestions} />
+                <QuestionManagement 
+                  questions={filteredQuestions} 
+                  categories={questionCategories}
+                />
               </div>
             </>
           )}

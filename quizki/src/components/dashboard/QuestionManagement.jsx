@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import DeleteConfirmationModal from '../common/DeleteConfirmationModal';
+import QuestionFilter from './filters/QuestionFilter';
 
-const QuestionManagement = ({ questions = [], loading = false }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+const QuestionManagement = ({ questions = [], loading = false, categories = [] }) => {
   const [filteredQuestions, setFilteredQuestions] = useState([]);
   const [deleting, setDeleting] = useState(null);
   const [error, setError] = useState(null);
@@ -15,7 +15,7 @@ const QuestionManagement = ({ questions = [], loading = false }) => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [questionToDelete, setQuestionToDelete] = useState(null);
 
-  // Update filtered questions when questions change (filtering happens at parent level)
+  // Update filtered questions when questions change
   useEffect(() => {
     setFilteredQuestions(questions);
   }, [questions]);
@@ -50,10 +50,6 @@ const QuestionManagement = ({ questions = [], loading = false }) => {
     navigate(`/admin/edit-question/${questionId}`);
   };
 
-  const handleCreateQuestion = () => {
-    navigate('/admin/create-question');
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center py-6">
@@ -78,16 +74,31 @@ const QuestionManagement = ({ questions = [], loading = false }) => {
         itemType="Question"
       />
       
-      {/* Top section with Add New button */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-white">Question List</h2>
-        <button 
-          onClick={handleCreateQuestion}
-          className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap"
-        >
-          Add New
-        </button>
-      </div>
+      {/* Apply QuestionFilter component */}
+      <QuestionFilter 
+        onFilterChange={(filters) => {
+          // Apply filters to questions
+          let filtered = [...questions];
+          
+          if (filters.search) {
+            filtered = filtered.filter(q => 
+              q.question_text.toLowerCase().includes(filters.search) ||
+              (q.category && q.category.toLowerCase().includes(filters.search))
+            );
+          }
+          
+          if (filters.difficulty) {
+            filtered = filtered.filter(q => q.difficulty === filters.difficulty);
+          }
+          
+          if (filters.category) {
+            filtered = filtered.filter(q => q.category === filters.category);
+          }
+          
+          setFilteredQuestions(filtered);
+        }}
+        categories={categories}
+      />
       
       {filteredQuestions.length === 0 ? (
         <div className="text-center py-6 text-gray-400">
